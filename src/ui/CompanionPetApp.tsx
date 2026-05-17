@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
-import { DogPet } from "./DogPet";
+import { CompanionPet } from "./CompanionPet";
+import { animationSlotForPetState } from "./animation-state";
+import { getBuiltInAvatarPack } from "./avatar-pack";
+import { ActiveAvatarPackProvider } from "./avatar-context";
 import { clampPanelSize, clampPetPosition, getDefaultPetPosition, getHomePanelHorizontalStyle } from "./geometry";
 import { ToolPanel } from "./tool-panels";
 import { AttentionToolsPanel } from "./tool-panels/panels/AttentionToolsPanel";
 import { DebugProcessingPanel, debugActionResult } from "./DebugProcessingPanel";
 import { defaultHomeActionResult, getHomePanelData } from "./home-panel-data";
+import type { AnimationSlot, AvatarPack } from "../shared/animation-types";
 import type { CompanionConversationMessage, CompanionPetAppProps, HomePanelActionId, HomePanelActionResult, PanelSize, PetPosition } from "./types";
 
 const DEFAULT_PANEL_SIZE: PanelSize = { width: 340, height: 360 };
@@ -32,7 +36,10 @@ export type CompanionViewProps = {
   homePanelOffsetTop: number;
   position: PetPosition;
   petState: NonNullable<CompanionPetAppProps["petState"]>;
+  activePack: AvatarPack;
+  animationSlot: AnimationSlot;
   panelSide: "left" | "right";
+  rootRef: React.RefObject<HTMLDivElement | null>;
   rootStyle: { transform: string };
   answer: string;
   onAnswerChange: (answer: string) => void;
@@ -65,6 +72,8 @@ type DebugPanelResetSetters = {
   setHomePanelMode: React.Dispatch<React.SetStateAction<HomePanelMode>>;
 };
 type CompanionViewBinding = {
+  activePack: AvatarPack;
+  animationSlot: AnimationSlot;
   answer: string;
   hideCompanion: () => void;
   homePanelSize: PanelSize;
@@ -74,6 +83,7 @@ type CompanionViewBinding = {
   panelSide: "left" | "right";
   panelSize: PanelSize;
   position: PetPosition;
+  rootRef: React.RefObject<HTMLDivElement | null>;
   rootStyle: { transform: string };
   setAnswer: (answer: string) => void;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -84,6 +94,8 @@ type CompanionViewBinding = {
 /** Mountable companion UI with draggable pet, compact panel, and adapter callbacks. */
 export function CompanionPetApp(props: CompanionPetAppProps) {
   const petState = props.petState ?? "idle";
+  const activePack = getBuiltInAvatarPack(props.avatarPackId);
+  const animationSlot = animationSlotForPetState(petState);
   const [position, setPosition] = useState<PetPosition>(() => props.initialPosition ? clampPetPosition(props.initialPosition) : getDefaultPetPosition());
   const [panelSize, setPanelSize] = useState<PanelSize>(() => clampPanelSize(props.initialPanelSize ?? DEFAULT_PANEL_SIZE));
   const [open, setOpen] = useState(false);
@@ -91,11 +103,13 @@ export function CompanionPetApp(props: CompanionPetAppProps) {
   const [answer, setAnswer] = useState("");
   const dragRef = useRef<DragState>({ active: false, offsetX: 0, offsetY: 0 });
   const resizeRef = useRef<ResizeState>({ active: false, startX: 0, startY: 0, width: panelSize.width, height: panelSize.height });
+  const rootRef = useRef<HTMLDivElement>(null);
   const panelSide = position.x > window.innerWidth / 2 ? "left" : "right";
   const rootStyle = useMemo(() => ({ transform: `translate(${position.x}px, ${position.y}px)` }), [position]);
 
   useEffect(() => bindWindowMotion({ dragRef, resizeRef, setPanelSize, setPosition, onPanelSizeChange: props.onPanelSizeChange, onPositionChange: props.onPositionChange }), [props.onPanelSizeChange, props.onPositionChange]);
   useEffect(() => bindViewportClamp(setPosition, setPanelSize), []);
+  useEffect(() => bindOutsidePanelClose(rootRef, open, setOpen), [open]);
   useEffect(() => {
     if (props.hidden) setOpen(false);
   }, [props.hidden]);
@@ -126,6 +140,8 @@ export function CompanionPetApp(props: CompanionPetAppProps) {
   if (props.hidden ?? localHidden) return <RestoreButton onRestore={restoreCompanion} />;
 
   return <CompanionView {...getCompanionViewProps(props, petState, {
+    activePack,
+    animationSlot,
     answer,
     hideCompanion,
     homePanelSize: getHomePanelSize(panelSize),
@@ -135,12 +151,13 @@ export function CompanionPetApp(props: CompanionPetAppProps) {
     panelSide,
     panelSize,
     position,
+    rootRef,
     rootStyle,
     setAnswer,
     setOpen,
     startDrag,
     startResize
-  })} />;
+  })} activePack={activePack} animationSlot={animationSlot} />;
 }
 
 function getCompanionViewProps(
@@ -149,6 +166,8 @@ function getCompanionViewProps(
   binding: CompanionViewBinding
 ): CompanionViewProps {
   return {
+    activePack: binding.activePack,
+    animationSlot: binding.animationSlot,
     appProps: getCompanionViewAppProps(props),
     answer: binding.answer,
     homePanelOffsetTop: getPanelOffsetTop(binding.position, binding.homePanelSize),
@@ -171,6 +190,7 @@ function getCompanionViewProps(
     panelSize: binding.panelSize,
     petState,
     position: binding.position,
+    rootRef: binding.rootRef,
     rootStyle: binding.rootStyle
   };
 }
@@ -218,37 +238,51 @@ function CompanionView(props: CompanionViewProps) {
   }
 
   return (
-    <div className="rc-root" style={props.rootStyle} data-panel-side={props.panelSide} data-state={props.petState}>
-      {props.open ? (
-        <div className="rc-home-panel" style={getHomePanelStyle(props.homePanelSize, props.homePanelOffsetTop, props.position, props.panelSide)}>
-          <OpenCompanionPanel
-            props={props}
-            homeActionResult={homeActionResult}
-            homePanelMode={homePanelMode}
-            pendingHomeAction={pendingHomeAction}
-            onQuestionSubmit={submitAnswer}
-            onRunHomeAction={(actionId) => void runHomeAction(actionId)}
-            onShowLegacyDebug={() => setHomeActionResult(debugActionResult(props.appProps))}
-            onShowProcessing={() => setHomePanelMode("processing")}
-            onShowTools={() => setHomePanelMode("tools")}
-          />
-          <button
-            aria-label="Resize companion panel"
-            className="rc-panel__resize"
-            type="button"
-            onMouseDown={props.onResizeStart}
-          />
-        </div>
-      ) : null}
+    <CompanionRoot
+      props={props}
+      homeActionResult={homeActionResult}
+      homePanelMode={homePanelMode}
+      pendingHomeAction={pendingHomeAction}
+      onQuestionSubmit={submitAnswer}
+      onRunHomeAction={(actionId) => void runHomeAction(actionId)}
+      onShowLegacyDebug={() => setHomeActionResult(debugActionResult(props.appProps))}
+      onShowProcessing={() => setHomePanelMode("processing")}
+      onShowTools={() => setHomePanelMode("tools")}
+    />
+  );
+}
+
+function CompanionRoot(input: OpenCompanionPanelProps) {
+  const props = input.props;
+  return (
+    <ActiveAvatarPackProvider pack={props.activePack}>
+      <div ref={props.rootRef} className="rc-root" style={props.rootStyle} data-panel-side={props.panelSide} data-state={props.petState}>
+        {props.open ? <OpenHomePanel {...input} /> : null}
+        <button
+          className="rc-pet-button"
+          type="button"
+          onClick={props.onToggleOpen}
+          onMouseDown={props.onDragStart}
+          aria-label={props.open ? "Close reading companion" : "Open reading companion"}
+        >
+          <CompanionPet pack={props.activePack} slot={props.animationSlot} />
+        </button>
+      </div>
+    </ActiveAvatarPackProvider>
+  );
+}
+
+function OpenHomePanel(input: OpenCompanionPanelProps) {
+  const props = input.props;
+  return (
+    <div className="rc-home-panel" style={getHomePanelStyle(props.homePanelSize, props.homePanelOffsetTop, props.position, props.panelSide)}>
+      <OpenCompanionPanel {...input} />
       <button
-        className="rc-pet-button"
+        aria-label="Resize companion panel"
+        className="rc-panel__resize"
         type="button"
-        onClick={props.onToggleOpen}
-        onMouseDown={props.onDragStart}
-        aria-label={props.open ? "Close reading companion" : "Open reading companion"}
-      >
-        <DogPet state={props.petState} />
-      </button>
+        onMouseDown={props.onResizeStart}
+      />
     </div>
   );
 }
@@ -312,14 +346,15 @@ function OpenCompanionPanel({
 
 function getQuestionPanelData(props: CompanionViewProps, onSubmit: (answer: string) => void) {
   const hasActiveSession = Boolean(props.appProps.questionSession);
+  const hasConversation = Boolean(props.appProps.conversationMessages?.length);
   return {
-    title: "Corgi",
+    title: props.activePack.name,
     subtitle: props.appProps.greeting ?? "Your reading buddy",
     prompt: props.appProps.questionSession?.question ?? "What stands out in this part?",
     messages: questionConversationMessages(props.appProps),
     helper: questionHelperText(props.appProps),
     inputDisabled: props.petState === "grading",
-    placeholder: "Type a quick answer...",
+    placeholder: hasActiveSession ? "Type a quick answer..." : "Ask a follow-up...",
     quickChoices: props.appProps.retryDisplay ? [
       {
         id: "retry",
@@ -328,11 +363,11 @@ function getQuestionPanelData(props: CompanionViewProps, onSubmit: (answer: stri
         onClick: props.appProps.retryDisplay.onRetry ?? props.onRetry
       }
     ] : undefined,
-    showInput: hasActiveSession,
-    submitLabel: "Submit answer",
+    showInput: hasActiveSession || hasConversation,
+    submitLabel: hasActiveSession ? "Submit answer" : "Send message",
     value: props.answer,
     onValueChange: props.onAnswerChange,
-    onSubmit: hasActiveSession ? onSubmit : undefined
+    onSubmit: hasActiveSession || hasConversation ? onSubmit : undefined
   };
 }
 
@@ -401,6 +436,28 @@ function bindViewportClamp(
 
   window.addEventListener("resize", clampOnResize);
   return () => window.removeEventListener("resize", clampOnResize);
+}
+
+function bindOutsidePanelClose(
+  rootRef: React.RefObject<HTMLDivElement | null>,
+  open: boolean,
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>
+) {
+  if (!open) return;
+
+  function closeOnOutsidePointer(event: MouseEvent | PointerEvent) {
+    const root = rootRef.current;
+    if (!root || isEventInsideElement(event, root)) return;
+    setOpen(false);
+  }
+
+  document.addEventListener("pointerdown", closeOnOutsidePointer);
+  return () => document.removeEventListener("pointerdown", closeOnOutsidePointer);
+}
+
+function isEventInsideElement(event: MouseEvent | PointerEvent, element: HTMLElement): boolean {
+  const path = event.composedPath();
+  return path.includes(element);
 }
 
 function bindWindowMotion(binding: MotionBinding) {

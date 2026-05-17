@@ -87,7 +87,7 @@ describe("ModelClient", () => {
     ]);
 
     expect(request.url).toBe("http://127.0.0.1:8318/v1/chat/completions");
-    expect(request.body.model).toBe("gpt-5.4-mini");
+    expect(request.body.model).toBe("gemini-3-flash-preview");
     expect(request.body.max_tokens).toBe(500);
     expect(request.body.tools?.map((tool) => tool.function.name)).toContain("ask_question");
     expect(request.body.tools?.map((tool) => tool.function.name)).toContain("grade_answer");
@@ -117,14 +117,14 @@ describe("ModelClient", () => {
 
   it("classifies the proxy as OpenAI-compatible with configurable reasoning", () => {
     const settings = createDefaultSettings();
-    settings.provider.model = "gpt-5.4-mini";
+    settings.provider.model = "gemini-3-flash-preview";
     settings.provider.reasoningLevel = "high";
 
     const model = createPiModel(settings);
 
     expect(model.api).toBe("openai-completions");
     expect(model.provider).toBe("openai-compatible");
-    expect(model.id).toBe("gpt-5.4-mini");
+    expect(model.id).toBe("gemini-3-flash-preview");
   });
 
   it("builds a native PI model for Anthropic settings", () => {

@@ -102,6 +102,16 @@ export default tseslint.config(
       "max-lines-per-function": ["error", { max: 60, skipBlankLines: true, skipComments: true }],
       "max-params": ["error", 4],
       "jsdoc/require-jsdoc": publicFunctionDocumentationRule,
+      "@typescript-eslint/no-unused-private-class-members": "error",
+      "@typescript-eslint/no-unused-vars": ["error", {
+        args: "after-used",
+        argsIgnorePattern: "^_",
+        caughtErrors: "all",
+        caughtErrorsIgnorePattern: "^_",
+        ignoreRestSiblings: true,
+        vars: "all",
+        varsIgnorePattern: "^_"
+      }],
       "no-restricted-syntax": [
         "error",
         preciseNameSelector
@@ -109,6 +119,7 @@ export default tseslint.config(
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
       "unicorn/prefer-add-event-listener": "off",
+      "unicorn/no-unused-properties": "error",
       "unicorn/prevent-abbreviations": "off"
     }
   },

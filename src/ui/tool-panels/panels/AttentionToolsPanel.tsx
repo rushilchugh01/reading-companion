@@ -62,9 +62,9 @@ export function AttentionToolsPanel(panelProps: AttentionToolsPanelProps) {
     menuActions = [],
     onInputChange,
     onInputSubmit,
-    placeholder = "Ask Corgi anything...",
+    placeholder = "Ask Companion anything...",
     subtitle = "Your reading buddy",
-    title = "Corgi"
+    title = "Companion"
   } = panelContent;
   const { closeLabel, onClose, themeId } = panelProps;
 
@@ -76,7 +76,7 @@ export function AttentionToolsPanel(panelProps: AttentionToolsPanelProps) {
       themeId={themeId}
     >
       <ToolPanelHeader
-        avatarState="celebratory"
+        avatarSlot="happy"
         title={title}
         subtitle={subtitle}
         menu={<AttentionHeaderActions actions={headerActions} menuActions={menuActions} />}

@@ -69,7 +69,7 @@ export function ExplanationDepthPanel(panelProperties: ExplanationDepthPanelProp
       onClose={panelProperties.onClose}
       themeId={panelProperties.themeId ?? "mint"}
     >
-      <ToolPanelHeader title="Reading Companion" subtitle="Online" avatarState="curious" />
+      <ToolPanelHeader title="Reading Companion" subtitle="Online" avatarSlot="bubble_peek" />
 
       {explanationPayload.quote ? (
         <ExplanationQuoteCard
@@ -109,7 +109,7 @@ function ExplanationMessageStack(messageProperties: {
   return (
     <div style={messageStackStyle}>
       <div className="rc-tool-message-row">
-        <CompanionAvatar state="curious" size="medium" />
+        <CompanionAvatar slot="bubble_peek" size="medium" />
         <CompanionBubble>
           <p>{messageProperties.explanation}</p>
         </CompanionBubble>
@@ -117,7 +117,7 @@ function ExplanationMessageStack(messageProperties: {
 
       {messageProperties.prompt ? (
         <div className="rc-tool-message-row">
-          <CompanionAvatar state="curious" size="medium" />
+          <CompanionAvatar slot="bubble_peek" size="medium" />
           <CompanionBubble>
             <p>{messageProperties.prompt}</p>
           </CompanionBubble>

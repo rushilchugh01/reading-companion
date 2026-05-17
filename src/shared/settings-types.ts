@@ -78,6 +78,7 @@ export type CompanionSettings = {
   interventionFrequency: "low" | "medium" | "high";
   readGatingMode: "strict" | "balanced" | "look_ahead";
   personaId: string;
+  avatarPackId: string;
   strictness: "chill" | "medium" | "strict";
   storageMode: "local_only" | "local_plus_cloud" | "cloud_only";
   provider: ModelProviderSettings;

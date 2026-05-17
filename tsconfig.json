@@ -22,6 +22,7 @@
     "src",
     "tests",
     "scripts",
+    "knip.config.ts",
     "wxt.config.ts",
     "vitest.config.ts",
     "playwright.config.ts",

@@ -61,7 +61,7 @@ export const PROVIDER_CATALOG = [
   openAiCompatible("xiaomi-token-plan-cn", "Xiaomi Token Plan CN", "", "mi-model"),
   openAiCompatible("xiaomi-token-plan-ams", "Xiaomi Token Plan AMS", "", "mi-model"),
   openAiCompatible("xiaomi-token-plan-sgp", "Xiaomi Token Plan SGP", "", "mi-model"),
-  provider({ id: "custom", label: "Custom OpenAI-compatible", api: "openai-completions", defaultBaseUrl: "http://127.0.0.1:8318/v1", defaultModel: "gpt-5.4-mini", fields: ["providerName", "apiKey", "baseUrl"] })
+  provider({ id: "custom", label: "Custom OpenAI-compatible", api: "openai-completions", defaultBaseUrl: "http://127.0.0.1:8318/v1", defaultModel: "gemini-3-flash-preview", fields: ["providerName", "apiKey", "baseUrl"] })
 ] as const satisfies ProviderCatalogEntry[];
 
 export const MODEL_PROVIDER_IDS = PROVIDER_CATALOG.map((provider) => provider.id);

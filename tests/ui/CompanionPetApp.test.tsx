@@ -109,12 +109,12 @@ const questionSession: QuestionSession = {
 };
 
 describe("CompanionPetApp", () => {
-  it("keeps the dog pet visible", () => {
+  it("keeps the companion pet visible", () => {
     render(<CompanionPetApp petState="curious" />);
 
     expect(screen.getByRole("button", { name: "Open reading companion" })).toBeInTheDocument();
-    expect(document.querySelector(".rc-dog--curious")).toBeInTheDocument();
-    expect(document.querySelector(".rc-dog__sprite")).toHaveAttribute(
+    expect(document.querySelector(".rc-pet--scan")).toBeInTheDocument();
+    expect(document.querySelector(".rc-pet__sprite")).toHaveAttribute(
       "src",
       "/assets/corgi-states-transparent/curious.png"
     );
@@ -133,6 +133,27 @@ describe("CompanionPetApp", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Close reading companion" }));
     expect(screen.queryByRole("region", { name: "Companion tool panel" })).not.toBeInTheDocument();
+  });
+
+  it("closes the open panel when the reader clicks outside it", () => {
+    render(<CompanionPetApp greeting="Hello reader" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open reading companion" }));
+    expect(screen.getByRole("region", { name: "Companion tool panel" })).toBeInTheDocument();
+
+    fireEvent.pointerDown(document.body);
+
+    expect(screen.queryByRole("region", { name: "Companion tool panel" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open reading companion" })).toBeInTheDocument();
+  });
+
+  it("keeps the open panel visible for clicks inside the companion", () => {
+    render(<CompanionPetApp greeting="Hello reader" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open reading companion" }));
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Summarize this bit" }));
+
+    expect(screen.getByRole("region", { name: "Companion tool panel" })).toBeInTheDocument();
   });
 });
 

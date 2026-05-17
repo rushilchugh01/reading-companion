@@ -1,7 +1,7 @@
 import { BookMarked, BookOpen } from "lucide-react";
 import {
   CompanionBubble,
-  CorgiImage,
+  CompanionImage,
   PrivacyNote,
   ToolActionButton,
   ToolPanelFrame
@@ -70,7 +70,7 @@ export function MemorySavePanel(panelProps: MemorySavePanelProps) {
     >
       {title ? <span className="rc-tool-panel-kicker">{title}</span> : null}
       <div className="rc-tool-memory-hero" aria-hidden="true">
-        <CorgiImage className="rc-tool-mascot rc-tool-memory-hero__mascot" state="celebratory" />
+        <CompanionImage className="rc-tool-mascot rc-tool-memory-hero__mascot" slot="happy" />
       </div>
 
       <div className="rc-tool-memory-stack">

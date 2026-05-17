@@ -5,7 +5,7 @@ This document is a fast orientation guide for agents working in this repo. It ma
 ## Project Shape
 
 - Browser extension stack: WXT, React, TypeScript, Chrome MV3 first.
-- UI runtime: content script injects a fixed draggable corgi pet and compact panel.
+- UI runtime: content script injects a fixed draggable companion pet and compact panel.
 - Background runtime: settings, IndexedDB persistence, queued PI-backed model calls, weak concepts, debug events, and sanitized model-call audit snapshots.
 - Local-first default: no login, local storage, user-provided OpenAI-compatible API settings.
 - Current LLM package: `@earendil-works/pi-ai` behind our own background `ModelClient`.
@@ -28,12 +28,12 @@ This document is a fast orientation guide for agents working in this repo. It ma
 - `src/shared/intervention-types.ts`: normalized `intervention:compose`, answer grading, chat, page-map, and chunk-sketch contracts.
 - `src/shared/model-job-types.ts`: background queue kinds, priorities, TTLs, job records, and debug snapshots.
 - `src/shared/runtime-types.ts`: runtime freshness snapshot used for stale-result validation.
-- `src/shared/companion-types.ts`: pet states, avatar pack schema, persona pack types.
+- `src/shared/companion-types.ts`: pet state keys used by the live UI/runtime.
 
 ## Avatar And Assets
 
-- `src/avatar/brutal-tutor-dog.ts`: built-in Brutal Tutor dog pack, persona copy, state mapping.
-- `src/ui/DogPet.tsx`: maps `PetStateKey` to corgi state PNGs.
+- `src/ui/CompanionPet.tsx`: renders the active avatar pack from resolved animation slots.
+- `src/ui/avatar-pack.ts`: built-in corgi avatar pack that reuses the current PNG assets.
 - `public/assets/corgi-states-transparent/*.png`: shipped transparent corgi sprites.
 - `assets/source/corgi-states-original/*.png`: original generated source sprites, not shipped.
 - `assets/source/v0-dog-companion/*.png`: older source dog assets, not shipped.
@@ -108,7 +108,7 @@ PI warning: WXT build emits a non-fatal warning because PI's browser-safe env-ke
 
 - `src/ui/CompanionPetApp.tsx`: draggable pet anchor, panel open/minimize, panel resizing, placement callbacks.
 - `src/ui/DebugProcessingPanel.tsx`: collapsible comprehensive debug dashboard for parser, policy, runtime spine, state machines, model queue, model calls, transitions, events, logs, and chunks.
-- `src/ui/DogPet.tsx`: corgi sprite renderer.
+- `src/ui/CompanionPet.tsx`: generic avatar-pack renderer.
 - `src/ui/content.css`: isolated content-script styles, chat themes, pet/panel polish.
 - `src/ui/geometry.ts`: viewport clamping and panel placement helpers.
 - `src/ui/types.ts`: UI props, panel tabs, panel size, chat themes.
@@ -135,7 +135,7 @@ Provider settings live in `CompanionSettings.provider`:
 - `maxTokens`
 - `temperature`
 
-Default provider is the local OpenAI-compatible proxy at `http://127.0.0.1:8318/v1` with `gpt-5.4-mini`.
+Default provider is the local OpenAI-compatible proxy at `http://127.0.0.1:8318/v1` with `gemini-3-flash-preview`.
 
 ## Tests
 

@@ -75,12 +75,12 @@ describe("SettingsRepository", () => {
       ...settings,
       provider: {
         ...settings.provider,
-        model: "gpt-5.4-mini-test",
+        model: "custom-model-test",
         reasoningLevel: "high"
       }
     });
 
-    expect(saved.provider.model).toBe("gpt-5.4-mini-test");
+    expect(saved.provider.model).toBe("custom-model-test");
     expect(saved.provider.reasoningLevel).toBe("high");
     expect((storage.state.companionSettings as CompanionSettings).provider.reasoningLevel).toBe("high");
   });

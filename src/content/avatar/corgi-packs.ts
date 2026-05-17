@@ -1,6 +1,6 @@
-import type { AnimationSlot, AvatarClip, AvatarPack } from "../../shared/animation-types";
+import type { AnimationSlot, AvatarPack, AvatarSlotConfig, AvatarVariant } from "../../shared/animation-types";
 
-const FALLBACK_CHAIN: AvatarPack["fallback"] = {
+const FALLBACK_CHAIN: AvatarPack["fallbacks"] = {
   deep_focus: "focus",
   skim_watch: "idle",
   concern: "focus",
@@ -58,9 +58,8 @@ export const corgiDefaultPack: AvatarPack = {
   name: "Corgi Default",
   version: "1.0.0",
   species: "corgi",
-  supportedSlots: DEFAULT_SUPPORTED_SLOTS,
-  clips: createClips(DEFAULT_SUPPORTED_SLOTS, "default"),
-  fallback: FALLBACK_CHAIN,
+  slots: createSlots(DEFAULT_SUPPORTED_SLOTS, "default"),
+  fallbacks: FALLBACK_CHAIN,
   personality: {
     tone: "gentle",
     promptStyle: "curious and brief",
@@ -85,9 +84,8 @@ export const corgiStrictPack: AvatarPack = {
   name: "Corgi Strict",
   version: "1.0.0",
   species: "corgi",
-  supportedSlots: STRICT_SUPPORTED_SLOTS,
-  clips: createClips(STRICT_SUPPORTED_SLOTS, "strict"),
-  fallback: FALLBACK_CHAIN,
+  slots: createSlots(STRICT_SUPPORTED_SLOTS, "strict"),
+  fallbacks: FALLBACK_CHAIN,
   personality: {
     tone: "strict",
     promptStyle: "direct and sparse",
@@ -106,19 +104,18 @@ export const corgiStrictPack: AvatarPack = {
   }
 };
 
-/** Creates placeholder clip descriptors for every supported slot in a pack. */
-function createClips(
+/** Creates placeholder slot descriptors for every supported slot in a pack. */
+function createSlots(
   slots: readonly AnimationSlot[],
   packKey: "default" | "strict"
-): Partial<Record<AnimationSlot, AvatarClip>> {
-  return Object.fromEntries(slots.map((slot) => [slot, createClip(slot, packKey)]));
+): Partial<Record<AnimationSlot, AvatarSlotConfig>> {
+  return Object.fromEntries(slots.map((slot) => [slot, { primary: createVariant(slot, packKey) }]));
 }
 
-/** Creates one deterministic clip descriptor for an avatar slot. */
-function createClip(slot: AnimationSlot, packKey: "default" | "strict"): AvatarClip {
+/** Creates one deterministic variant descriptor for an avatar slot. */
+function createVariant(slot: AnimationSlot, packKey: "default" | "strict"): AvatarVariant {
   return {
     id: `${packKey}-${slot}`,
-    slot,
     src: `/assets/avatar/corgi/${packKey}/${slot}.json`,
     type: "lottie",
     durationMilliseconds: durationForSlot(slot),

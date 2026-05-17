@@ -104,6 +104,7 @@ export function ContentCompanionRuntime() {
       gradeResult={state.grade}
       conversationMessages={state.conversationMessages}
       greeting="hieee — I’ll stay quiet unless something worth checking shows up."
+      avatarPackId={state.settings.avatarPackId}
       hidden={hiddenOnThisPage}
       initialPanelSize={settingsPanelSize(state.settings)}
       initialPosition={settingsPosition(state.settings)}

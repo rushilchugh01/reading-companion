@@ -45,7 +45,7 @@ export function DebugProcessingPanel({
   return (
     <ToolPanelFrame className="rc-tool-panel--processing-debug" themeId={themeId}>
       <ToolPanelHeader
-        avatarState="thinking"
+        avatarSlot="think"
         title="Processing"
         subtitle={snapshot?.title || "Debug diagnostics"}
         menu={<DebugPanelMenu onBack={onBack} onOpenLegacyDebug={onOpenLegacyDebug} onOpenSettings={onOpenSettings} />}

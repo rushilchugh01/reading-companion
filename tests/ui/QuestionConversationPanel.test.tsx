@@ -53,9 +53,11 @@ describe("Question conversation panel", () => {
     expect(screen.getByText("Which detail changed the premise?")).toBeInTheDocument();
   });
 
-  it("keeps a completed transcript visible without accepting more answers", () => {
+  it("keeps a completed transcript visible with follow-up chat input", () => {
+    const onAnswerSubmit = vi.fn();
     render(
       <CompanionPetApp
+        onAnswerSubmit={onAnswerSubmit}
         conversationMessages={[
           assistantMessage("question-1:question", "What caused this to happen?"),
           userMessage("question-1:answer", "Because the premise changed."),
@@ -68,6 +70,11 @@ describe("Question conversation panel", () => {
 
     expect(screen.getByRole("log", { name: "Question conversation" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Type a quick answer...")).not.toBeInTheDocument();
+    const input = screen.getByLabelText("Ask a follow-up...");
+    fireEvent.change(input, { target: { value: "Can you say that another way?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(onAnswerSubmit).toHaveBeenCalledWith("Can you say that another way?");
   });
 });
 

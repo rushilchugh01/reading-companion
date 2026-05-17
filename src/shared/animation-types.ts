@@ -64,14 +64,21 @@ export type AnimationRuntimeState = {
   };
 };
 
-export type AvatarClip = {
+export type AvatarAssetType = "sprite" | "animated-webp" | "video" | "lottie";
+
+export type AvatarVariant = {
   id: string;
-  slot: AnimationSlot;
   src: string;
-  type: "sprite" | "lottie" | "rive" | "video" | "css";
-  durationMilliseconds: number;
-  intensity: 0 | 1 | 2 | 3;
-  loop: boolean;
+  type: AvatarAssetType;
+  durationMilliseconds?: number;
+  intensity?: 0 | 1 | 2 | 3;
+  loop?: boolean;
+  weight?: number;
+};
+
+export type AvatarSlotConfig = {
+  primary: AvatarVariant;
+  variants?: AvatarVariant[];
 };
 
 export type AvatarPack = {
@@ -79,9 +86,8 @@ export type AvatarPack = {
   name: string;
   version: string;
   species: string;
-  supportedSlots: readonly AnimationSlot[];
-  clips: Partial<Record<AnimationSlot, AvatarClip>>;
-  fallback: Partial<Record<AnimationSlot, AnimationSlot>>;
+  slots: Partial<Record<AnimationSlot, AvatarSlotConfig>>;
+  fallbacks: Partial<Record<AnimationSlot, AnimationSlot>>;
   personality: {
     tone: "gentle" | "direct" | "strict";
     promptStyle: string;
@@ -99,6 +105,50 @@ export type AvatarPack = {
     reducedMotionSlot: AnimationSlot;
   };
 };
+
+/** Returns the nearest pack slot with artwork by following fallback links. */
+export function resolveAvatarSlot(pack: AvatarPack, slot: AnimationSlot): AnimationSlot | undefined {
+  const visitedSlots = new Set<AnimationSlot>();
+  let currentSlot: AnimationSlot | undefined = slot;
+
+  while (currentSlot && !visitedSlots.has(currentSlot)) {
+    if (pack.slots[currentSlot]) return currentSlot;
+    visitedSlots.add(currentSlot);
+    currentSlot = pack.fallbacks[currentSlot];
+  }
+
+  return pack.slots.idle ? "idle" : undefined;
+}
+
+/** Returns the pack slot config for a requested animation slot. */
+export function resolveAvatarSlotConfig(
+  pack: AvatarPack,
+  slot: AnimationSlot
+): AvatarSlotConfig | undefined {
+  const resolvedSlot = resolveAvatarSlot(pack, slot);
+  return resolvedSlot ? pack.slots[resolvedSlot] : undefined;
+}
+
+/** Chooses a weighted variant from a slot config, keeping primary as the fallback. */
+export function selectAvatarVariant(
+  config: AvatarSlotConfig,
+  rng: () => number = Math.random
+): AvatarVariant {
+  const variants = [config.primary, ...(config.variants ?? [])];
+  const weightedVariants = variants.map((variant) => ({
+    variant,
+    weight: Math.max(0, variant.weight ?? 1)
+  }));
+  const totalWeight = weightedVariants.reduce((total, item) => total + item.weight, 0);
+  if (totalWeight <= 0) return config.primary;
+
+  let cursor = rng() * totalWeight;
+  for (const item of weightedVariants) {
+    cursor -= item.weight;
+    if (cursor <= 0) return item.variant;
+  }
+  return config.primary;
+}
 
 const ATTENTION_SLOT_PRIORITIES: readonly [
   keyof NonNullable<AnimationRuntimeState["attention"]>,

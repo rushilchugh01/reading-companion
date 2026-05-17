@@ -30,6 +30,7 @@ test.describe("compact home popup UI", () => {
       await expect(page.getByRole("region", { name: "Reading companion panel" })).toBeHidden();
 
       await expectPopupFitsOrScrolls(page);
+      await expectPopupScrollbarStyle(page);
 
       await page.getByRole("button", { name: "Summarize this bit" }).click();
       await expect(page.getByRole("heading", { name: "Quick summary" })).toBeVisible();
@@ -49,6 +50,11 @@ test.describe("compact home popup UI", () => {
       await expect(popup).toBeVisible();
       await page.getByRole("button", { name: "Summarize this bit" }).click();
       await expect(page.getByRole("heading", { name: "Quick summary" })).toBeVisible();
+
+      await page.mouse.click(900, 100);
+      await expect(popup).toBeHidden();
+      await companionButton.click();
+      await expect(popup).toBeVisible();
     }, test.info());
   });
 });
@@ -120,4 +126,20 @@ async function expectPopupFitsOrScrolls(page: Page): Promise<void> {
   await page.mouse.move((box?.x ?? 0) + 80, (box?.y ?? 0) + 80);
   await page.mouse.wheel(0, 500);
   await expect.poll(() => popupScrollFrame.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+}
+
+async function expectPopupScrollbarStyle(page: Page): Promise<void> {
+  const popupScrollFrame = page.locator(".rc-home-panel > .rc-tool-panel");
+  const style = await popupScrollFrame.evaluate((element) => {
+    const computed = getComputedStyle(element);
+    return {
+      overflowX: computed.overflowX,
+      scrollbarColor: computed.scrollbarColor,
+      webkitScrollbarHeight: getComputedStyle(element, "::-webkit-scrollbar").height
+    };
+  });
+
+  expect(style.overflowX).toBe("hidden");
+  expect(style.scrollbarColor).toContain("rgba(47, 134, 111, 0.18)");
+  expect(style.webkitScrollbarHeight).toBe("0px");
 }

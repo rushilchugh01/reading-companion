@@ -29,7 +29,7 @@ test.describe("built extension harness", () => {
       await expect(page).toHaveTitle(/Synthetic Article/);
       await expect(page.locator("article")).toContainText("progressive overload");
       await expect(page.getByRole("button", { name: "Open reading companion" })).toBeVisible();
-      await expect(page.locator(".rc-dog__sprite")).toHaveAttribute(
+      await expect(page.locator(".rc-pet__sprite")).toHaveAttribute(
         "src",
         /assets\/corgi-states-transparent\/idle\.png/
       );

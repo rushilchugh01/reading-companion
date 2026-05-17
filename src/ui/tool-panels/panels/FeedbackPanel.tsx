@@ -1,7 +1,7 @@
 import {
   ChecksToday,
   CompanionBubble,
-  CorgiImage,
+  CompanionImage,
   ToolActionButton,
   ToolPanelFrame
 } from "../primitives";
@@ -35,9 +35,9 @@ export function FeedbackPanel(panelProps: FeedbackPanelProps) {
       onClose={panelProps.onClose}
       themeId={panelProps.themeId}
     >
-      <CorgiImage
+      <CompanionImage
         className="rc-tool-mascot rc-feedback-panel__mascot"
-        state="celebratory"
+        slot="happy"
         alt={feedbackContent.title ?? "Reading companion"}
         style={{ justifySelf: "center", marginBottom: "-18px", marginTop: "-12px", width: "min(64%, 250px)" }}
       />

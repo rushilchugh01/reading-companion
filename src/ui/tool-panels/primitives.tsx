@@ -1,18 +1,20 @@
 import { BookOpen, Check, Send, X } from "lucide-react";
 import type { AriaRole, CSSProperties, FormEvent, KeyboardEvent, ReactNode } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
-import { corgiSpriteUrl } from "../asset-url";
+import type { AnimationSlot } from "../../shared/animation-types";
+import { companionAssetUrl } from "../asset-url";
+import { resolveRenderableAvatarVariant } from "../avatar-pack";
+import { useActiveAvatarPack } from "../avatar-context";
 import { companionPanelThemeStyle } from "./themes";
 import type { CompanionPanelThemeId, ToolPanelAction } from "./types";
 
-export type CorgiAssetName = "about-to-ask" | "celebratory" | "curious" | "thinking" | "idle";
-
-/** Renders a transparent corgi sprite from the extension asset pack. */
-export function CorgiImage(props: { className?: string; state?: CorgiAssetName; alt?: string; style?: CSSProperties }) {
+/** Renders a transparent companion asset from the active avatar pack. */
+export function CompanionImage(props: { className?: string; slot?: AnimationSlot; alt?: string; style?: CSSProperties }) {
+  const variant = resolveRenderableAvatarVariant(useActiveAvatarPack(), props.slot ?? "raise_paw");
   return (
     <img
       className={props.className}
-      src={corgiSpriteUrl(props.state ?? "about-to-ask")}
+      src={companionAssetUrl(variant.src)}
       alt={props.alt ?? ""}
       aria-hidden={props.alt ? undefined : true}
       style={props.style}
@@ -46,13 +48,13 @@ export function ToolPanelHeader(props: {
   title?: string;
   subtitle?: string;
   menu?: ReactNode;
-  avatarState?: CorgiAssetName;
+  avatarSlot?: AnimationSlot;
 }) {
   return (
     <header className="rc-tool-header">
-      <CompanionAvatar state={props.avatarState ?? "about-to-ask"} size="large" />
+      <CompanionAvatar slot={props.avatarSlot ?? "raise_paw"} size="large" />
       <div className="rc-tool-header__copy">
-        <h2>{props.title ?? "Corgi"}</h2>
+        <h2>{props.title ?? "Companion"}</h2>
         {props.subtitle ? <p>{props.subtitle}</p> : null}
       </div>
       {props.menu ? <div className="rc-tool-header__menu">{props.menu}</div> : null}
@@ -60,11 +62,11 @@ export function ToolPanelHeader(props: {
   );
 }
 
-/** Renders the small circular corgi avatar used beside chat bubbles. */
-export function CompanionAvatar(props: { state?: CorgiAssetName; size?: "small" | "medium" | "large" }) {
+/** Renders the small circular companion avatar used beside chat bubbles. */
+export function CompanionAvatar(props: { slot?: AnimationSlot; size?: "small" | "medium" | "large" }) {
   return (
     <span className={`rc-tool-avatar rc-tool-avatar--${props.size ?? "medium"}`} aria-hidden="true">
-      <CorgiImage state={props.state} />
+      <CompanionImage slot={props.slot} />
     </span>
   );
 }

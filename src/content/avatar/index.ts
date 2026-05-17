@@ -1,4 +1,4 @@
-import type { AnimationSlot, AvatarClip, AvatarPack } from "../../shared/animation-types";
+import type { AnimationSlot, AvatarPack, AvatarSlotConfig } from "../../shared/animation-types";
 import { corgiDefaultPack, corgiStrictPack } from "./corgi-packs";
 
 export { corgiDefaultPack, corgiStrictPack };
@@ -11,18 +11,18 @@ export function resolveAvatarSlot(pack: AvatarPack, slot: AnimationSlot): Animat
   let currentSlot: AnimationSlot | undefined = slot;
 
   while (currentSlot && !visitedSlots.has(currentSlot)) {
-    if (pack.supportedSlots.includes(currentSlot)) return currentSlot;
+    if (pack.slots[currentSlot]) return currentSlot;
     visitedSlots.add(currentSlot);
-    currentSlot = pack.fallback[currentSlot];
+    currentSlot = pack.fallbacks[currentSlot];
   }
 
   return pack.motionProfile.reducedMotionSlot;
 }
 
 /** Returns the clip for a resolved slot, falling back to the pack's idle clip. */
-export function resolveAvatarClip(pack: AvatarPack, slot: AnimationSlot): AvatarClip {
+export function resolveAvatarSlotConfig(pack: AvatarPack, slot: AnimationSlot): AvatarSlotConfig {
   const resolvedSlot = resolveAvatarSlot(pack, slot);
-  const clip = pack.clips[resolvedSlot] ?? pack.clips.idle;
-  if (!clip) throw new Error(`Avatar pack ${pack.id} has no clip for ${slot}.`);
-  return clip;
+  const config = pack.slots[resolvedSlot] ?? pack.slots.idle;
+  if (!config) throw new Error(`Avatar pack ${pack.id} has no slot config for ${slot}.`);
+  return config;
 }

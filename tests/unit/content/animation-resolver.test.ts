@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  resolveAvatarSlotConfig,
   resolveAnimationSlot,
+  selectAvatarVariant,
   type AnimationRuntimeState
 } from "../../../src/shared/animation-types";
+import { animationSlotForPetState } from "../../../src/ui/animation-state";
+import { builtInPackCoversAnimationSlots, builtinCorgiPack } from "../../../src/ui/avatar-pack";
 import { corgiStrictPack, resolveAvatarSlot } from "../../../src/content/avatar";
 
 describe("resolveAnimationSlot", () => {
@@ -69,6 +73,52 @@ describe("avatar pack fallback", () => {
     expect(resolveAvatarSlot(corgiStrictPack, "raise_paw")).toBe("bubble_peek");
     expect(resolveAvatarSlot(corgiStrictPack, "happy")).toBe("idle");
     expect(resolveAvatarSlot(corgiStrictPack, "back_off")).toBe("quiet_idle");
+  });
+
+  it("resolves every known slot in the built-in corgi pack", () => {
+    expect(builtInPackCoversAnimationSlots()).toBe(true);
+    expect(resolveAvatarSlotConfig(builtinCorgiPack, "deep_focus")?.primary.src).toContain(
+      "reading-detected.png"
+    );
+    expect(resolveAvatarSlotConfig(builtinCorgiPack, "low_energy_idle")?.primary.src).toContain(
+      "idle.png"
+    );
+  });
+});
+
+describe("legacy pet-state bridge", () => {
+  it("maps live pet states into animation slots", () => {
+    expect(animationSlotForPetState("idle")).toBe("idle");
+    expect(animationSlotForPetState("reading_detected")).toBe("focus");
+    expect(animationSlotForPetState("curious")).toBe("scan");
+    expect(animationSlotForPetState("thinking")).toBe("think");
+    expect(animationSlotForPetState("about_to_ask")).toBe("raise_paw");
+    expect(animationSlotForPetState("listening")).toBe("listen");
+    expect(animationSlotForPetState("grading")).toBe("think");
+    expect(animationSlotForPetState("confused")).toBe("concern");
+    expect(animationSlotForPetState("celebratory")).toBe("happy");
+    expect(animationSlotForPetState("sleeping")).toBe("sleep");
+    expect(animationSlotForPetState("debug_active")).toBe("scan");
+  });
+});
+
+describe("avatar variant selection", () => {
+  it("uses primary when no variants exist", () => {
+    const config = resolveAvatarSlotConfig(builtinCorgiPack, "idle");
+
+    expect(config && selectAvatarVariant(config).id).toBe("corgi-idle");
+  });
+
+  it("chooses weighted variants from a slot config", () => {
+    const selected = selectAvatarVariant({
+      primary: { id: "primary", src: "primary.png", type: "sprite", weight: 1 },
+      variants: [
+        { id: "rare", src: "rare.png", type: "sprite", weight: 1 },
+        { id: "common", src: "common.png", type: "sprite", weight: 8 }
+      ]
+    }, () => 0.15);
+
+    expect(selected.id).toBe("rare");
   });
 });
 

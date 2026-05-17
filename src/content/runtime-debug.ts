@@ -33,7 +33,7 @@ type DebugState = {
 /** Builds the debug panel snapshot from current runtime state. */
 export function createDebugSnapshot(state: DebugState, page: InterventionPageContext) {
   return {
-    activeAvatarPack: state.settings.personaId,
+    activeAvatarPack: state.settings.avatarPackId,
     chunks: state.chunks,
     contentType: state.parser.contentType,
     cooldownRemainingMilliseconds: 0,

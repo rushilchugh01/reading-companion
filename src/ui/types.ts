@@ -44,6 +44,7 @@ export type CompanionConversationMessage = Message & {
 /** External state and callbacks for the companion UI. */
 export type CompanionPetAppProps = {
   petState?: PetStateKey;
+  avatarPackId?: string;
   greeting?: string;
   questionSession?: QuestionSession;
   gradeResult?: GradeResult;

@@ -1,6 +1,6 @@
 {
   "name": "reading-companion",
-  "version": "0.46.0",
+  "version": "0.92.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,10 +10,13 @@
     "package:firefox": "wxt zip -b firefox --mv2",
     "package:all": "npm run package:chrome && npm run package:firefox",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
+    "lint": "eslint . && npm run lint:unused",
+    "lint:unused": "knip --include files",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:cliproxy": "playwright test tests/e2e/cliproxy-gemini-smoke.spec.ts",
+    "test:e2e:long": "playwright test tests/e2e/full-state-machine-long.spec.ts --workers=2",
     "check:size": "node scripts/check-size.mjs",
     "check": "npm run typecheck && npm run lint && npm run check:size && npm run test && npm run build"
   },
@@ -46,6 +49,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-unicorn": "^62.0.0",
     "jsdom": "^27.2.0",
+    "knip": "^6.14.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.4",
     "vitest": "^4.1.6"

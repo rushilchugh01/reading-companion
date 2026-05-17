@@ -72,7 +72,7 @@ function retryHomePanelData(props: CompanionViewProps, options: HomePanelDataOpt
 
 function baseHomePanelData(props: CompanionViewProps, options: HomePanelDataOptions): HomePanelData {
   return {
-    title: "Corgi",
+    title: props.activePack.name,
     subtitle: "Your reading buddy",
     headline: "What would help right now?",
     headerActions: homeHeaderActions(props, options),
