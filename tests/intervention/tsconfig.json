@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noUncheckedIndexedAccess": true,
+    "strict": true,
+    "target": "ES2023",
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["../../src/intervention/**/*.ts", "../../src/shared/**/*.ts", "./**/*.ts"]
+}

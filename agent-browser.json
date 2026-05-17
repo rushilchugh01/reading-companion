@@ -1,0 +1,4 @@
+{
+  "$schema": "https://agent-browser.dev/schema.json",
+  "executablePath": "/snap/chromium/current/usr/lib/chromium-browser/chrome"
+}

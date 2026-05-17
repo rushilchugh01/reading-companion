@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Synthetic PDF-Like Fixture</title>
+    <style>
+      body {
+        background: #ececec;
+        font-family: Georgia, serif;
+        margin: 0;
+      }
+
+      .page {
+        background: white;
+        box-shadow: 0 2px 12px rgb(0 0 0 / 12%);
+        box-sizing: border-box;
+        margin: 24px auto;
+        min-height: 960px;
+        padding: 72px;
+        width: 720px;
+      }
+    </style>
+  </head>
+  <body>
+    <main aria-label="PDF document preview">
+      <section class="page" aria-label="Page 1">
+        <h1>Attention Recovery in Long Documents</h1>
+        <p>
+          Readers often lose context at page boundaries. A useful companion
+          notices section changes and asks for a compact bridge summary.
+        </p>
+      </section>
+      <section class="page" aria-label="Page 2">
+        <h2>Method</h2>
+        <p>
+          The document uses fixed page regions, footnotes, captions, and
+          repeated headers to mimic the extraction challenges of PDF viewers.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

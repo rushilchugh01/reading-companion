@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Corgi Chat Panel Demo</title>
+    <style>
+      :root {
+        --blue: #3f82e8;
+        --blue-deep: #2e72d9;
+        --mint: #48b9a7;
+        --ink: #111216;
+        --panel-line: #d8ebff;
+        --panel-fill: #eaf6ff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 32% 28%, rgb(81 143 231 / 10%), transparent 30%),
+          radial-gradient(circle at 74% 67%, rgb(94 200 187 / 12%), transparent 26%),
+          #ffffff;
+        color: var(--ink);
+        font-family:
+          "Nunito Sans",
+          "Avenir Next",
+          "Segoe UI",
+          system-ui,
+          sans-serif;
+      }
+
+      .demo-wrap {
+        width: min(94vw, 720px);
+        min-height: 760px;
+        display: grid;
+        place-items: center;
+        padding-top: 106px;
+      }
+
+      .chat-panel {
+        position: relative;
+        width: min(600px, 92vw);
+        min-height: 540px;
+        padding: 272px 17px 64px;
+        border: 4px solid rgb(255 255 255 / 94%);
+        border-radius: 42px;
+        background:
+          radial-gradient(circle at 50% 34%, rgb(180 221 255 / 70%) 0 24%, transparent 44%),
+          radial-gradient(circle at 14% 22%, rgb(255 255 255 / 88%) 0 3px, transparent 4px),
+          radial-gradient(circle at 83% 19%, rgb(255 255 255 / 82%) 0 3px, transparent 4px),
+          linear-gradient(140deg, rgb(231 245 255 / 98%), rgb(210 235 255 / 92));
+        box-shadow:
+          0 26px 54px rgb(44 126 220 / 20%),
+          0 10px 18px rgb(44 126 220 / 12%),
+          inset 0 2px 0 rgb(255 255 255 / 78%);
+      }
+
+      .chat-panel::before {
+        position: absolute;
+        inset: 0;
+        border-radius: 38px;
+        background:
+          linear-gradient(52deg, transparent 0 24%, rgb(255 255 255 / 28%) 24% 30%, transparent 30% 100%),
+          linear-gradient(126deg, transparent 0 49%, rgb(255 255 255 / 22%) 49% 54%, transparent 54% 100%);
+        content: "";
+        pointer-events: none;
+      }
+
+      .close-button {
+        position: absolute;
+        top: 18px;
+        right: 19px;
+        z-index: 6;
+        width: 59px;
+        height: 59px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        border-radius: 999px;
+        background: rgb(255 255 255 / 95%);
+        color: #466997;
+        cursor: pointer;
+        box-shadow:
+          0 9px 18px rgb(74 128 185 / 18%),
+          inset 0 1px 0 #ffffff;
+      }
+
+      .close-button svg {
+        width: 28px;
+        height: 28px;
+        stroke-width: 3;
+      }
+
+      .hero-corgi {
+        position: absolute;
+        z-index: 4;
+        top: -72px;
+        left: 50%;
+        width: min(350px, 64vw);
+        transform: translateX(-50%);
+        filter: drop-shadow(0 16px 13px rgb(56 89 121 / 16%));
+        user-select: none;
+        pointer-events: none;
+      }
+
+      .brush {
+        position: absolute;
+        z-index: 1;
+        top: 168px;
+        left: 50%;
+        width: 285px;
+        height: 145px;
+        border-radius: 48% 52% 45% 55%;
+        background: rgb(150 211 247 / 33%);
+        transform: translateX(-50%) rotate(-8deg);
+        filter: blur(1px);
+      }
+
+      .chat-card {
+        position: relative;
+        z-index: 5;
+        display: grid;
+        gap: 28px;
+        padding: 20px 20px 26px;
+        border-radius: 34px;
+        background: rgb(255 255 255 / 91%);
+        box-shadow:
+          0 20px 42px rgb(74 128 185 / 20%),
+          inset 0 1px 0 rgb(255 255 255 / 90%);
+      }
+
+      .message-row {
+        display: grid;
+        grid-template-columns: 62px minmax(0, max-content);
+        align-items: start;
+        gap: 16px;
+      }
+
+      .avatar {
+        width: 58px;
+        height: 58px;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        border: 3px solid #a8d6f4;
+        border-radius: 999px;
+        background: #ffffff;
+        box-shadow:
+          0 5px 11px rgb(44 126 220 / 13%),
+          inset 0 1px 0 #ffffff;
+      }
+
+      .avatar img {
+        width: 50px;
+        height: 50px;
+        object-fit: contain;
+      }
+
+      .bubble {
+        position: relative;
+        max-width: 392px;
+        padding: 20px 26px 22px;
+        border: 2px solid rgb(226 226 226 / 82%);
+        border-radius: 22px;
+        background: linear-gradient(#ffffff, #fbfaf7);
+        box-shadow:
+          0 6px 12px rgb(28 31 38 / 13%),
+          0 16px 26px rgb(31 68 100 / 7%),
+          inset 0 1px 0 #ffffff;
+      }
+
+      .bubble::before {
+        position: absolute;
+        top: 23px;
+        left: -12px;
+        width: 23px;
+        height: 23px;
+        border-left: 2px solid rgb(226 226 226 / 82%);
+        border-bottom: 2px solid rgb(226 226 226 / 82%);
+        border-radius: 0 0 0 5px;
+        background: linear-gradient(135deg, #ffffff 0 52%, transparent 53%);
+        content: "";
+        transform: rotate(45deg);
+      }
+
+      .bubble p {
+        margin: 0;
+        color: #111216;
+        font-size: clamp(21px, 3.8vw, 27px);
+        font-weight: 900;
+        line-height: 1.17;
+        letter-spacing: 0;
+      }
+
+      .message-row.second {
+        grid-template-columns: 62px minmax(0, max-content);
+      }
+
+      .message-row.second .bubble {
+        max-width: 284px;
+        padding-top: 19px;
+        padding-bottom: 19px;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1.34fr;
+        gap: 18px;
+        margin-top: 3px;
+      }
+
+      .action {
+        min-height: 82px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        border-radius: 21px;
+        background: #ffffff;
+        font-size: clamp(18px, 3.2vw, 25px);
+        font-weight: 900;
+        letter-spacing: 0;
+        cursor: pointer;
+        box-shadow:
+          0 9px 15px rgb(52 91 147 / 10%),
+          inset 0 1px 0 #ffffff;
+      }
+
+      .action svg {
+        flex: 0 0 auto;
+        width: 35px;
+        height: 35px;
+        stroke-width: 2.3;
+      }
+
+      .action.hint {
+        border: 3px solid var(--blue);
+        color: var(--blue-deep);
+      }
+
+      .action.continue {
+        border: 3px solid var(--mint);
+        color: #229b8c;
+      }
+
+      .checks {
+        position: absolute;
+        z-index: 5;
+        left: 0;
+        right: 0;
+        bottom: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        color: #14151a;
+        font-size: 25px;
+        font-weight: 900;
+      }
+
+      .verified {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: var(--blue);
+        color: #ffffff;
+        box-shadow: 0 4px 8px rgb(46 114 217 / 22%);
+      }
+
+      .verified svg {
+        width: 18px;
+        height: 18px;
+        stroke-width: 3.6;
+      }
+
+      .sparkle,
+      .confetti,
+      .diamond {
+        position: absolute;
+        z-index: 3;
+        pointer-events: none;
+      }
+
+      .sparkle {
+        width: var(--s, 30px);
+        height: var(--s, 30px);
+        color: var(--c, #ffc328);
+      }
+
+      .sparkle::before,
+      .sparkle::after {
+        position: absolute;
+        inset: 45% 0;
+        height: 10%;
+        border-radius: 999px;
+        background: currentColor;
+        content: "";
+      }
+
+      .sparkle::after {
+        transform: rotate(90deg);
+      }
+
+      .sparkle > span {
+        position: absolute;
+        inset: 0;
+        transform: rotate(45deg);
+      }
+
+      .sparkle > span::before,
+      .sparkle > span::after {
+        position: absolute;
+        inset: 45% 0;
+        height: 10%;
+        border-radius: 999px;
+        background: currentColor;
+        content: "";
+      }
+
+      .sparkle > span::after {
+        transform: rotate(90deg);
+      }
+
+      .diamond {
+        width: var(--d, 17px);
+        height: var(--d, 17px);
+        border-radius: 4px;
+        background: var(--c, #5fa2e6);
+        transform: rotate(45deg);
+      }
+
+      .confetti {
+        width: 10px;
+        height: 18px;
+        border-radius: 3px;
+        background: var(--c, #ff7a62);
+        transform: rotate(var(--r, 20deg));
+      }
+
+      .s1 { top: 100px; left: 89px; --s: 35px; --c: #ffc62d; }
+      .s2 { top: 208px; left: 128px; --s: 26px; --c: #ffffff; }
+      .s3 { top: 150px; right: 91px; --s: 34px; --c: #64a9e9; }
+      .s4 { top: 93px; right: 116px; --s: 32px; --c: #ffc62d; }
+      .s5 { right: 85px; bottom: 183px; --s: 33px; --c: #ffc62d; }
+      .s6 { right: 35px; bottom: 240px; --s: 24px; --c: #6bb3ec; }
+      .s7 { right: 47px; bottom: 204px; --s: 20px; --c: #6bb3ec; }
+
+      .d1 { top: 47px; left: 33px; --d: 17px; --c: #54a4e2; }
+      .d2 { top: -44px; left: 56px; --d: 19px; --c: #ff5f64; }
+      .d3 { top: -61px; right: 121px; --d: 19px; --c: #5b91e9; }
+      .d4 { top: 240px; right: 78px; --d: 13px; --c: #4e8fe3; }
+      .c1 { top: 130px; left: -13px; --c: #ff7667; --r: 104deg; }
+      .c2 { top: 185px; left: 20px; --c: #f6b400; --r: 14deg; }
+      .c3 { top: 185px; left: 63px; --c: #4f8fe5; --r: -22deg; width: 8px; height: 10px; }
+      .c4 { top: 130px; right: -11px; --c: #ff7667; --r: 58deg; }
+
+      @media (max-width: 560px) {
+        body {
+          overflow: auto;
+        }
+
+        .demo-wrap {
+          min-height: 700px;
+          padding-top: 80px;
+        }
+
+        .chat-panel {
+          min-height: 500px;
+          padding: 222px 13px 58px;
+          border-radius: 32px;
+        }
+
+        .hero-corgi {
+          top: -43px;
+          width: min(292px, 72vw);
+        }
+
+        .close-button {
+          width: 48px;
+          height: 48px;
+        }
+
+        .brush {
+          top: 138px;
+          width: 230px;
+        }
+
+        .chat-card {
+          gap: 18px;
+          padding: 16px;
+          border-radius: 26px;
+        }
+
+        .message-row,
+        .message-row.second {
+          grid-template-columns: 48px minmax(0, 1fr);
+          gap: 11px;
+        }
+
+        .avatar {
+          width: 46px;
+          height: 46px;
+          border-width: 2px;
+        }
+
+        .avatar img {
+          width: 40px;
+          height: 40px;
+        }
+
+        .bubble,
+        .message-row.second .bubble {
+          max-width: none;
+          padding: 16px 18px;
+          border-radius: 18px;
+        }
+
+        .actions {
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+
+        .action {
+          min-height: 64px;
+        }
+
+        .checks {
+          font-size: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="demo-wrap" aria-label="Corgi expanded chat interface demo">
+      <section class="chat-panel" aria-label="Expanded chat interface">
+        <button class="close-button" type="button" aria-label="Close chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+          </svg>
+        </button>
+
+        <span class="brush" aria-hidden="true"></span>
+        <img
+          class="hero-corgi"
+          src="public/assets/corgi-states-transparent/about-to-ask.png"
+          alt="Happy corgi waving"
+        />
+
+        <i class="sparkle s1" aria-hidden="true"><span></span></i>
+        <i class="sparkle s2" aria-hidden="true"><span></span></i>
+        <i class="sparkle s3" aria-hidden="true"><span></span></i>
+        <i class="sparkle s4" aria-hidden="true"><span></span></i>
+        <i class="sparkle s5" aria-hidden="true"><span></span></i>
+        <i class="sparkle s6" aria-hidden="true"><span></span></i>
+        <i class="sparkle s7" aria-hidden="true"><span></span></i>
+        <i class="diamond d1" aria-hidden="true"></i>
+        <i class="diamond d2" aria-hidden="true"></i>
+        <i class="diamond d3" aria-hidden="true"></i>
+        <i class="diamond d4" aria-hidden="true"></i>
+        <i class="confetti c1" aria-hidden="true"></i>
+        <i class="confetti c2" aria-hidden="true"></i>
+        <i class="confetti c3" aria-hidden="true"></i>
+        <i class="confetti c4" aria-hidden="true"></i>
+
+        <div class="chat-card">
+          <div class="message-row">
+            <span class="avatar" aria-hidden="true">
+              <img src="public/assets/corgi-states-transparent/about-to-ask.png" alt="" />
+            </span>
+            <article class="bubble">
+              <p>Nice catch — you spotted the contradiction.</p>
+            </article>
+          </div>
+
+          <div class="message-row second">
+            <span class="avatar" aria-hidden="true">
+              <img src="public/assets/corgi-states-transparent/about-to-ask.png" alt="" />
+            </span>
+            <article class="bubble">
+              <p>Want a hint for the next one?</p>
+            </article>
+          </div>
+
+          <div class="actions" aria-label="Chat actions">
+            <button class="action hint" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M9 18h6" stroke-linecap="round" />
+                <path d="M10 22h4" stroke-linecap="round" />
+                <path d="M8.4 14.6c-1.4-1.1-2.2-2.7-2.2-4.5a5.8 5.8 0 1 1 11.6 0c0 1.8-.8 3.4-2.2 4.5-.8.6-1.1 1.2-1.1 2H9.5c0-.8-.3-1.4-1.1-2Z" />
+                <path d="M12 2v2M4.2 5.2l1.4 1.4M19.8 5.2l-1.4 1.4M2 12h2M20 12h2" stroke-linecap="round" />
+              </svg>
+              <span>Give hint</span>
+            </button>
+            <button class="action continue" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M4 5.5c2.6-.8 5.1-.4 8 1.1v13c-2.9-1.5-5.4-1.9-8-1.1v-13Z" />
+                <path d="M20 5.5c-2.6-.8-5.1-.4-8 1.1v13c2.9-1.5 5.4-1.9 8-1.1v-13Z" />
+                <path d="M7 9c1.1 0 2.2.2 3.3.7M7 12.2c1.1 0 2.2.2 3.3.7M17 9c-1.1 0-2.2.2-3.3.7M17 12.2c-1.1 0-2.2.2-3.3.7" stroke-linecap="round" />
+              </svg>
+              <span>Continue reading</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="checks" aria-label="3 checks today">
+          <span class="verified" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="m7 12 3 3 7-7" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <span>3 checks today</span>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

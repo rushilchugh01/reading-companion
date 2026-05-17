@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Synthetic Code Fixture</title>
+  </head>
+  <body>
+    <main>
+      <h1>Selection Summarizer</h1>
+      <p>The snippet keeps the selected text small enough for a local prompt.</p>
+      <pre><code>export function summarizeSelection(selection: Selection): string {
+  const text = selection.toString().trim();
+  return text.length &gt; 600 ? `${text.slice(0, 600)}...` : text;
+}</code></pre>
+    </main>
+  </body>
+</html>

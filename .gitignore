@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.wxt/
+.codex/
+logs/
+temp/
+test-results/
+playwright-report/
+.env
+.env.*
+*.log
