@@ -1,40 +1,32 @@
 import { createDefaultSettings } from "@/shared/defaults";
-import type { ChatSendInput, InterventionComposeInput } from "@/shared/intervention-types";
-import type { GradePromptPayload, QuestionPromptPayload } from "@/shared/messages";
+import type { AnswerGradeInput, ChatSendInput, InterventionComposeInput } from "@/shared/intervention-types";
 import { ModelClient } from "@/background/model-client";
 import { companionTools } from "@/background/companion-tools";
 import { createPiModel, enforceJsonPayload, type PiModelResult, type PiRequest } from "@/background/pi-model-provider";
 
-const questionPayload: QuestionPromptPayload = {
-  chunkText: "Photosynthesis converts light energy into chemical energy for plants.",
-  heading: "Photosynthesis",
-  personaId: "brutal-tutor-dog",
-  readGatingMode: "balanced"
-};
+const passageText = "Photosynthesis converts light energy into chemical energy for plants.";
+const personaId = "brutal-tutor-dog";
 
 function createClient(piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>()) {
-  return new ModelClient({
-    piRunner,
-    now: () => 1_700_000_000_000,
-    idFactory: () => "question-1"
-  });
+  return new ModelClient({ piRunner });
 }
 
-function gradePayload(answer: string): GradePromptPayload {
+function gradePayload(answer: string): AnswerGradeInput {
   return {
-    answer,
-    chunkText: questionPayload.chunkText,
-    personaId: questionPayload.personaId,
-    strictness: "medium",
-    session: {
-      id: "question-1",
+    requestId: "question-1:grade:0",
+    sessionId: "question-1",
+    attemptNumber: 0,
+    chunkId: "chunk-a",
+    question: "What does photosynthesis convert?",
+    expectedAnswer: "Photosynthesis converts light energy into chemical energy.",
+    userAnswer: answer,
+    passage: {
       chunkId: "chunk-a",
-      question: "What does photosynthesis convert?",
-      style: "recall",
-      expectedPoint: "Photosynthesis converts light energy into chemical energy.",
-      attemptCount: 0,
-      createdAt: 1
-    }
+      heading: "Photosynthesis",
+      text: passageText
+    },
+    personaId,
+    strictness: "medium",
   };
 }
 
@@ -50,14 +42,14 @@ function interventionInput(): InterventionComposeInput {
     currentPassage: {
       chunkId: "chunk-a",
       heading: "Photosynthesis",
-      text: questionPayload.chunkText
+      text: passageText
     },
     readerState: {},
     policy: {
       policyId: "ambient_active_reading_v1",
       allowedActions: ["ask_question", "offer_prediction", "offer_observation", "offer_help", "stay_quiet"]
     },
-    companionStyle: { personaId: questionPayload.personaId },
+    companionStyle: { personaId },
     history: [],
     expiresAt: 1_700_000_060_000
   };
@@ -70,9 +62,9 @@ function chatPayload(): ChatSendInput {
     page: { title: "Photosynthesis" },
     currentPassage: {
       chunkId: "chunk-a",
-      text: questionPayload.chunkText
+      text: passageText
     },
-    companionStyle: { personaId: questionPayload.personaId },
+    companionStyle: { personaId },
     history: [],
     message: "Can you explain that plainly?"
   };
@@ -200,118 +192,6 @@ describe("ModelClient intervention composition", () => {
   });
 });
 
-describe("ModelClient generation", () => {
-  it("uses the ask_question tool response when an API key is configured", async () => {
-    const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
-      text: "",
-      toolCalls: [{
-        name: "ask_question",
-        arguments: {
-          question: "What changes form in photosynthesis?",
-          expectedPoint: "Light energy becomes chemical energy.",
-          style: "recall",
-          targetChunkId: "chunk-a"
-        }
-      }]
-    }));
-    const settings = createDefaultSettings();
-    settings.provider.apiKey = "secret";
-
-    const result = await createClient(piRunner).generateQuestion(questionPayload, settings);
-
-    expect(piRunner).toHaveBeenCalledOnce();
-    expect(piRunner.mock.calls[0]?.[0].userPrompt).toContain("Photosynthesis");
-    expect(result.action).toBe("ask_question");
-    if (result.action !== "ask_question") throw new Error("Expected question result.");
-    const { session: question } = result;
-    expect(question.question).toBe("What changes form in photosynthesis?");
-    expect(question.expectedPoint).toBe("Light energy becomes chemical energy.");
-    expect(question.style).toBe("recall");
-  });
-
-  it("allows custom OpenAI-compatible question generation without an API key", async () => {
-    const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
-      text: "",
-      toolCalls: [{
-        name: "ask_question",
-        arguments: {
-          expectedPoint: "Light energy becomes chemical energy.",
-          question: "What changes form in photosynthesis?",
-          style: "recall"
-        }
-      }]
-    }));
-
-    await expect(createClient(piRunner).generateQuestion(
-      questionPayload,
-      createDefaultSettings()
-    )).resolves.toMatchObject({ action: "ask_question" });
-
-    expect(piRunner).toHaveBeenCalledOnce();
-  });
-
-});
-
-describe("ModelClient legacy question compatibility", () => {
-  it("normalizes new intervention ask_question fields for legacy callers", async () => {
-    const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
-      text: "",
-      toolCalls: [{
-        name: "ask_question",
-        arguments: {
-          userFacingText: "What energy conversion is happening?",
-          expectedAnswer: "Light energy becomes chemical energy.",
-          petIntent: "curious",
-          reasonForApp: "The passage contains a core claim.",
-          confidence: 0.9
-        }
-      }]
-    }));
-    const result = await createClient(piRunner).generateQuestion(questionPayload, createDefaultSettings());
-
-    expect(result.action).toBe("ask_question");
-    if (result.action !== "ask_question") throw new Error("Expected question result.");
-    expect(result.session.question).toBe("What energy conversion is happening?");
-    expect(result.session.expectedPoint).toBe("Light energy becomes chemical energy.");
-  });
-});
-
-describe("ModelClient generation provider errors", () => {
-  it("lets hosted question generation reach the provider without an API key", async () => {
-    const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.reject(new Error("provider rejected auth")));
-    const settings = createDefaultSettings();
-    settings.provider.providerId = "anthropic";
-
-    await expect(createClient(piRunner).generateQuestion(questionPayload, settings))
-      .rejects.toThrow("Provider request failed: provider rejected auth");
-
-    expect(piRunner).toHaveBeenCalledOnce();
-  });
-
-  it("throws a visible provider error when the provider returns an incomplete question", async () => {
-    const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
-      text: "",
-      toolCalls: [{ name: "ask_question", arguments: { question: "What changes form?" } }]
-    }));
-    const settings = createDefaultSettings();
-    settings.provider.apiKey = "secret";
-
-    await expect(createClient(piRunner).generateQuestion(questionPayload, settings)).rejects.toThrow(
-      "Provider request failed: Provider returned an incomplete question payload."
-    );
-  });
-
-  it("throws a visible provider error when configured question generation fails", async () => {
-    const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.reject(new Error("offline")));
-    const settings = createDefaultSettings();
-    settings.provider.apiKey = "secret";
-
-    await expect(createClient(piRunner).generateQuestion(questionPayload, settings)).rejects.toThrow("Provider request failed: offline");
-
-    expect(piRunner).toHaveBeenCalledOnce();
-  });
-});
-
 describe("ModelClient invalid provider output", () => {
   it("wraps invalid JSON text in the provider error contract", async () => {
     const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
@@ -321,33 +201,8 @@ describe("ModelClient invalid provider output", () => {
     const settings = createDefaultSettings();
     settings.provider.apiKey = "secret";
 
-    await expect(createClient(piRunner).generateQuestion(questionPayload, settings))
+    await expect(createClient(piRunner).composeIntervention(interventionInput(), settings))
       .rejects.toThrow("Provider request failed:");
-  });
-});
-
-describe("ModelClient quiet generation", () => {
-  it("returns stay_quiet when the model chooses silence", async () => {
-    const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
-      text: "",
-      toolCalls: [{
-        name: "stay_quiet",
-        arguments: {
-          reason: "This candidate is not worth interrupting yet.",
-          nextBestMoment: "after the section checkpoint"
-        }
-      }]
-    }));
-    const settings = createDefaultSettings();
-    settings.provider.apiKey = "secret";
-
-    const result = await createClient(piRunner).generateQuestion(questionPayload, settings);
-
-    expect(result).toMatchObject({
-      action: "stay_quiet",
-      reason: "This candidate is not worth interrupting yet.",
-      nextBestMoment: "after the section checkpoint"
-    });
   });
 });
 

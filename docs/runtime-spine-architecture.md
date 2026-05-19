@@ -73,7 +73,6 @@ State reducers and policies are pure TypeScript. They decide whether an interven
 
 Live background model routes now include:
 
-- `question:generate`: legacy compatibility path queued as `intervention_compose`.
 - `intervention:compose`: normalized intervention path with stale-result validation when a runtime snapshot is available.
 - `answer:grade`: queued P0 grading path.
 - `chat:send`: queued P0 natural text chat path.

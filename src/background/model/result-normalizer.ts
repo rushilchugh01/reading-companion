@@ -68,8 +68,8 @@ export function normalizeInterventionRecord(
   const normalized: InterventionComposeResult = {
     requestId: stringField(record, "requestId") || input.requestId,
     action,
-    userFacingText: optionalStringField(record, "userFacingText") || optionalStringField(record, "question") || optionalStringField(record, "prompt"),
-    expectedAnswer: optionalStringField(record, "expectedAnswer") || optionalStringField(record, "expectedPoint") || optionalStringField(record, "expectedDirection"),
+    userFacingText: optionalStringField(record, "userFacingText"),
+    expectedAnswer: optionalStringField(record, "expectedAnswer"),
     observationType: observationTypeField(record),
     followupOptions: stringArrayField(record, "followupOptions"),
     petIntent: petIntentField(record, action),
@@ -123,37 +123,18 @@ export function normalizeGradeResult(result: PiModelResult, requestId?: string):
 /** Parses provider text as a single JSON object. */
 export function recordFromText(text: string): Record<string, unknown> {
   if (!text) return {};
-  const parsed = JSON.parse(text) as unknown;
+  const parsed = JSON.parse(jsonTextFromProviderText(text)) as unknown;
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     throw new Error("Model returned non-object JSON.");
   }
   return parsed as Record<string, unknown>;
 }
 
-/** Converts legacy question-generation provider outputs into question records. */
-export function legacyQuestionRecordFromResult(result: PiModelResult): Record<string, unknown> {
-  const askQuestion = result.toolCalls.find((toolCall) => toolCall.name === "ask_question");
-  const prediction = result.toolCalls.find((toolCall) => toolCall.name === "offer_prediction");
-  const stayQuiet = result.toolCalls.find((toolCall) => toolCall.name === "stay_quiet");
-  if (askQuestion) {
-    return askQuestion.arguments;
-  }
-  if (prediction) {
-    return {
-      question: stringField(prediction.arguments, "prompt") || stringField(prediction.arguments, "userFacingText"),
-      expectedPoint: stringField(prediction.arguments, "expectedDirection") || stringField(prediction.arguments, "expectedAnswer"),
-      style: "prediction"
-    };
-  }
-  if (stayQuiet) {
-    return { ...stayQuiet.arguments, action: "stay_quiet" };
-  }
-  const record = recordFromText(result.text);
-  return {
-    ...record,
-    question: stringField(record, "question") || stringField(record, "userFacingText"),
-    expectedPoint: stringField(record, "expectedPoint") || stringField(record, "expectedAnswer")
-  };
+/** Removes common Markdown JSON fences from provider text responses. */
+function jsonTextFromProviderText(text: string): string {
+  const trimmed = text.trim();
+  const fenced = /^```(?:json|JSON)?\s*([\s\S]*?)\s*```$/.exec(trimmed);
+  return fenced?.[1]?.trim() ?? trimmed;
 }
 
 /** Reads a non-empty string field from a provider record. */

@@ -76,7 +76,7 @@ Policy settings live at `CompanionSettings.interventionPolicy` and support thres
 
 ## Background Layer
 
-- `src/background/runtime-router.ts`: handles settings, `runtime:snapshot`, `runtime:debugModelJobs`, `intervention:compose`, legacy `question:generate`, `answer:grade`, `chat:send`, page-job cancellation, weak concepts, and debug events.
+- `src/background/runtime-router.ts`: handles settings, `runtime:snapshot`, `runtime:debugModelJobs`, `intervention:compose`, `answer:grade`, `chat:send`, page-job cancellation, weak concepts, and debug events.
 - `src/background/queue/model-queue.ts`: priority model queue with TTLs, dedupe, concurrency lanes, cancellation, overflow, and settle events.
 - `src/background/model/model-call-audit.ts`: sanitized queue/job/model-call audit log for debug tooling.
 - `src/background/model/model-result-validator.ts`: stale page/chunk/session/chat validation before applying queued model output.
@@ -98,7 +98,7 @@ The app sends tools to the LLM through PI. Normalized intervention actions are:
 - `offer_help`: offer to unpack a dense passage without asking for an answer.
 - `stay_quiet`: explicitly decline to intervene.
 
-Answer grading uses `grade_answer`. Freeform chat uses `chat:send` natural text and should not expose intervention tools by default. The old `question:generate` message remains as a queued compatibility path, but live proactive content runtime now calls `intervention:compose`.
+Answer grading uses `grade_answer`. Freeform chat uses `chat:send` natural text and should not expose intervention tools by default.
 
 Policy warning: model tools are requests, not authority. Cooldowns, read-gating, privacy, disable settings, validation, and dismissal backoff remain app-level rules. The model never owns animation state.
 

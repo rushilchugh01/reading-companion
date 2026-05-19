@@ -111,7 +111,9 @@ export type InterventionComposeResult = {
 
 export type AnswerGradeInput = {
   requestId: string;
-  questionId?: string;
+  sessionId: string;
+  attemptNumber: number;
+  chunkId: string;
   question: string;
   expectedAnswer: string;
   userAnswer: string;

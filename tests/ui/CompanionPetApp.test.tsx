@@ -103,7 +103,7 @@ const questionSession: QuestionSession = {
   attemptCount: 0,
   chunkId: "chunk-1",
   createdAt: 1,
-  expectedPoint: "The premise changed.",
+  expectedAnswer: "The premise changed.",
   question: "What caused this to happen?",
   style: "why_how"
 };

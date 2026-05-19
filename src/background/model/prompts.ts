@@ -3,7 +3,6 @@ import type {
   ChatSendInput,
   InterventionComposeInput
 } from "../../shared/intervention-types";
-import type { GradePromptPayload } from "../../shared/messages";
 
 export type ModelPromptMessage = {
   role: "system" | "user" | "assistant";
@@ -39,33 +38,6 @@ export function buildInterventionPrompt(payload: InterventionComposeInput): Mode
   ];
 }
 
-/** Builds the legacy answer grading prompt. */
-export function buildGradePrompt(payload: GradePromptPayload): ModelPromptMessage[] {
-  return [
-    {
-      role: "system",
-      content: [
-        "Grade the answer to an active-reading question.",
-        "Prefer the grade_answer tool.",
-        "If tools are unavailable, return JSON with label, feedback, hint, and missedPoint."
-      ].join(" ")
-    },
-    {
-      role: "user",
-      content: JSON.stringify({
-        task: "grade",
-        strictness: payload.strictness,
-        personaId: payload.personaId,
-        question: payload.session.question,
-        expectedPoint: payload.session.expectedPoint,
-        answer: payload.answer,
-        chunkText: truncatePromptText(payload.chunkText, 4_000),
-        schema: { label: "GradeLabel", feedback: "string", hint: "string" }
-      })
-    }
-  ];
-}
-
 /** Builds the normalized answer grading prompt. */
 export function buildAnswerGradePrompt(payload: AnswerGradeInput): ModelPromptMessage[] {
   return [
@@ -81,6 +53,7 @@ export function buildAnswerGradePrompt(payload: AnswerGradeInput): ModelPromptMe
       content: JSON.stringify({
         task: "grade_answer",
         requestId: payload.requestId,
+        sessionId: payload.sessionId,
         strictness: payload.strictness,
         personaId: payload.personaId,
         question: payload.question,

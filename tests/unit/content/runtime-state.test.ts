@@ -68,7 +68,7 @@ describe("content runtime-state intervention mapping", () => {
   it("turns prediction interventions into answerable question sessions", () => {
     expect(questionSessionFromIntervention(predictionResult(), chunk, settings, 12_000)).toMatchObject({
       chunkId: "chunk-1",
-      expectedPoint: "The runtime should queue the next intervention.",
+      expectedAnswer: "The runtime should queue the next intervention.",
       id: "prediction-1",
       question: "What do you think happens next?",
       style: "prediction"
@@ -114,7 +114,7 @@ describe("content runtime-state routing", () => {
       attemptCount: 0,
       chunkId: "chunk-1",
       createdAt: 1,
-      expectedPoint: "An answer",
+      expectedAnswer: "An answer",
       id: "session-1",
       question: "Question?",
       style: "why_how"

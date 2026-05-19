@@ -512,9 +512,27 @@ async function requestAnswerGrade(
   setState: React.Dispatch<React.SetStateAction<RuntimeState | undefined>>
 ): Promise<GradeResult | undefined> {
   try {
+    const session = state.session!;
     return await requestBackground<GradeResult>({
       type: "answer:grade",
-      payload: { answer, chunkText: chunk.text, personaId: state.settings.personaId, session: state.session!, strictness: state.settings.strictness }
+      payload: {
+        requestId: `${session.id}:grade:${session.attemptCount}`,
+        sessionId: session.id,
+        attemptNumber: session.attemptCount,
+        chunkId: session.chunkId,
+        question: session.question,
+        expectedAnswer: session.expectedAnswer,
+        userAnswer: answer,
+        passage: {
+          chunkId: chunk.id,
+          heading: chunk.heading,
+          order: chunk.order,
+          preview: chunk.preview,
+          text: chunk.text
+        },
+        personaId: state.settings.personaId,
+        strictness: state.settings.strictness
+      }
     });
   } catch (error) {
     const event = createDebugEvent("MODEL_REQUEST_FAILED", `Grading provider failed: ${errorMessage(error)}`);

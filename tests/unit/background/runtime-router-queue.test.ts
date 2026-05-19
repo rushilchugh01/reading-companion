@@ -5,7 +5,6 @@ import type { PiModelResult, PiRequest } from "@/background/pi-model-provider";
 import { SettingsRepository } from "@/background/settings-repository";
 import { createDefaultSettings } from "@/shared/defaults";
 import type { ChatSendInput, InterventionComposeInput } from "@/shared/intervention-types";
-import type { RuntimeMessage } from "@/shared/messages";
 import type { ModelQueueDebugSnapshot } from "@/shared/model-job-types";
 
 type DeferredResult = {
@@ -39,25 +38,6 @@ function createRouter(piRunner: (request: PiRequest) => Promise<PiModelResult>) 
     database: new BackgroundDatabaseRepository({ databaseName: `router-test-${crypto.randomUUID()}` }),
     model: new ModelClient({ piRunner })
   });
-}
-
-function questionMessage(): RuntimeMessage {
-  return {
-    type: "question:generate",
-    payload: {
-      chunkText: "A dense paragraph about memory retrieval.",
-      heading: "Article",
-      personaId: "brutal-tutor-dog",
-      readGatingMode: "balanced",
-      opportunity: {
-        targetChunkId: "chunk-1",
-        reason: "dense_pause",
-        confidence: 0.8,
-        suggestedMoves: ["ask_question"],
-        policyId: "ambient_active_reading_v1"
-      }
-    }
-  };
 }
 
 function interventionInput(): InterventionComposeInput {
@@ -98,19 +78,19 @@ function debugSnapshotValue(result: Awaited<ReturnType<RuntimeMessageRouter["rou
 }
 
 describe("RuntimeMessageRouter model queue boundary", () => {
-  it("routes legacy question generation through cancellable queue jobs", async () => {
+  it("routes intervention composition through cancellable queue jobs", async () => {
     const router = createRouter(() => new Promise<PiModelResult>(() => {}));
 
-    const pendingQuestion = router.route(questionMessage());
+    const pendingIntervention = router.route({ type: "intervention:compose", payload: interventionInput() });
     const cancelResult = await router.route({
       type: "modelJob:cancelForPage",
-      payload: { pageId: "Article" }
+      payload: { pageId: "page-1" }
     });
-    const questionResult = await pendingQuestion;
+    const interventionResult = await pendingIntervention;
 
     expect(cancelResult).toMatchObject({ ok: true });
-    expect(questionResult.ok).toBe(false);
-    expect(questionResult.error).toContain("cancelled");
+    expect(interventionResult.ok).toBe(false);
+    expect(interventionResult.error).toContain("cancelled");
   });
 
   it("validates normalized intervention results against the latest runtime snapshot", async () => {
