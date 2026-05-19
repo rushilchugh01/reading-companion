@@ -66,7 +66,9 @@ export type InterventionPolicyContext = {
 };
 
 export type CompanionStyleContext = {
-  personaId: string;
+  companionPackId: string;
+  /** @deprecated Use companionPackId. */
+  personaId?: string;
   tone?: string;
   strictness?: CompanionSettings["strictness"];
   readGatingMode?: CompanionSettings["readGatingMode"];
@@ -112,10 +114,13 @@ export type InterventionComposeResult = {
 export type AnswerGradeInput = {
   requestId: string;
   questionId?: string;
+  attemptNumber?: number;
   question: string;
   expectedAnswer: string;
   userAnswer: string;
   passage?: InterventionPassageContext;
+  companionPackId: string;
+  /** @deprecated Use companionPackId. */
   personaId: string;
   strictness: CompanionSettings["strictness"];
 };

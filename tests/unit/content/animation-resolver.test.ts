@@ -22,7 +22,7 @@ describe("resolveAnimationSlot", () => {
     expect(resolveAnimationSlot({ cooldown: { allProactive: true }, intervention: { prompting: true } })).toBe(
       "quiet_idle"
     );
-    expect(resolveAnimationSlot({ intervention: { prompting: true } })).toBe("raise_paw");
+    expect(resolveAnimationSlot({ intervention: { prompting: true } })).toBe("prompt");
     expect(resolveAnimationSlot({ intervention: { queued: true } })).toBe("think");
     expect(resolveAnimationSlot({ page: { scanning: true } })).toBe("scan");
     expect(resolveAnimationSlot({ attention: { stuck: true } })).toBe("concern");
@@ -48,7 +48,7 @@ describe("resolveAnimationSlot", () => {
     expect(resolveAnimationSlot({ petBehavior: { backOff: true }, intervention: { queued: true } })).toBe(
       "back_off"
     );
-    expect(resolveAnimationSlot({ petBehavior: { sitBackDown: true } })).toBe("sit_back_down");
+    expect(resolveAnimationSlot({ petBehavior: { settle: true } })).toBe("settle");
     expect(resolveAnimationSlot({ petBehavior: { lowEnergy: true } })).toBe("low_energy_idle");
   });
 
@@ -66,21 +66,21 @@ describe("resolveAnimationSlot", () => {
 });
 
 describe("avatar pack fallback", () => {
-  it("maps unsupported strict-pack slots through the fallback chain", () => {
-    expect(resolveAvatarSlot(corgiStrictPack, "deep_focus")).toBe("focus");
+  it("maps unsupported strict-pack slots to idle only", () => {
+    expect(resolveAvatarSlot(corgiStrictPack, "deep_focus")).toBe("idle");
     expect(resolveAvatarSlot(corgiStrictPack, "skim_watch")).toBe("idle");
-    expect(resolveAvatarSlot(corgiStrictPack, "concern")).toBe("focus");
-    expect(resolveAvatarSlot(corgiStrictPack, "raise_paw")).toBe("bubble_peek");
+    expect(resolveAvatarSlot(corgiStrictPack, "concern")).toBe("idle");
+    expect(resolveAvatarSlot(corgiStrictPack, "prompt")).toBe("idle");
     expect(resolveAvatarSlot(corgiStrictPack, "happy")).toBe("idle");
-    expect(resolveAvatarSlot(corgiStrictPack, "back_off")).toBe("quiet_idle");
+    expect(resolveAvatarSlot(corgiStrictPack, "back_off")).toBe("idle");
   });
 
   it("resolves every known slot in the built-in corgi pack", () => {
     expect(builtInPackCoversAnimationSlots()).toBe(true);
-    expect(resolveAvatarSlotConfig(builtinCorgiPack, "deep_focus")?.primary.src).toContain(
+    expect(resolveAvatarSlotConfig(builtinCorgiPack, "deep_focus")?.[0]?.src).toContain(
       "reading-detected.png"
     );
-    expect(resolveAvatarSlotConfig(builtinCorgiPack, "low_energy_idle")?.primary.src).toContain(
+    expect(resolveAvatarSlotConfig(builtinCorgiPack, "low_energy_idle")?.[0]?.src).toContain(
       "idle.png"
     );
   });
@@ -92,7 +92,7 @@ describe("legacy pet-state bridge", () => {
     expect(animationSlotForPetState("reading_detected")).toBe("focus");
     expect(animationSlotForPetState("curious")).toBe("scan");
     expect(animationSlotForPetState("thinking")).toBe("think");
-    expect(animationSlotForPetState("about_to_ask")).toBe("raise_paw");
+    expect(animationSlotForPetState("about_to_ask")).toBe("prompt");
     expect(animationSlotForPetState("listening")).toBe("listen");
     expect(animationSlotForPetState("grading")).toBe("think");
     expect(animationSlotForPetState("confused")).toBe("concern");
@@ -110,13 +110,11 @@ describe("avatar variant selection", () => {
   });
 
   it("chooses weighted variants from a slot config", () => {
-    const selected = selectAvatarVariant({
-      primary: { id: "primary", src: "primary.png", type: "sprite", weight: 1 },
-      variants: [
-        { id: "rare", src: "rare.png", type: "sprite", weight: 1 },
-        { id: "common", src: "common.png", type: "sprite", weight: 8 }
-      ]
-    }, () => 0.15);
+    const selected = selectAvatarVariant([
+      { id: "primary", src: "primary.png", type: "sprite", role: "primary", weight: 1 },
+      { id: "rare", src: "rare.png", type: "sprite", role: "variant", weight: 1 },
+      { id: "common", src: "common.png", type: "sprite", role: "variant", weight: 8 }
+    ], () => 0.15);
 
     expect(selected.id).toBe("rare");
   });

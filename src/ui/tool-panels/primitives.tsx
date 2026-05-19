@@ -10,7 +10,7 @@ import type { CompanionPanelThemeId, ToolPanelAction } from "./types";
 
 /** Renders a transparent companion asset from the active avatar pack. */
 export function CompanionImage(props: { className?: string; slot?: AnimationSlot; alt?: string; style?: CSSProperties }) {
-  const variant = resolveRenderableAvatarVariant(useActiveAvatarPack(), props.slot ?? "raise_paw");
+  const variant = resolveRenderableAvatarVariant(useActiveAvatarPack(), props.slot ?? "prompt");
   return (
     <img
       className={props.className}
@@ -52,7 +52,7 @@ export function ToolPanelHeader(props: {
 }) {
   return (
     <header className="rc-tool-header">
-      <CompanionAvatar slot={props.avatarSlot ?? "raise_paw"} size="large" />
+      <CompanionAvatar slot={props.avatarSlot ?? "prompt"} size="large" />
       <div className="rc-tool-header__copy">
         <h2>{props.title ?? "Companion"}</h2>
         {props.subtitle ? <p>{props.subtitle}</p> : null}

@@ -74,7 +74,7 @@ function interventionInput(): InterventionComposeInput {
       policyId: "ambient_active_reading_v1",
       allowedActions: ["ask_question"]
     },
-    companionStyle: { personaId: "brutal-tutor-dog" },
+    companionStyle: { companionPackId: "builtin-corgi", personaId: "brutal-tutor-dog" },
     history: [],
     expiresAt: Date.now() + 20_000
   };
@@ -86,7 +86,7 @@ function chatInput(): ChatSendInput {
     tabId: 3,
     pageId: "page-1",
     page: { title: "Article" },
-    companionStyle: { personaId: "brutal-tutor-dog" },
+    companionStyle: { companionPackId: "builtin-corgi", personaId: "brutal-tutor-dog" },
     history: [{ role: "user", content: "hello" }],
     message: "explain this"
   };

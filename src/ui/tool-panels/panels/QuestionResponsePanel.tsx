@@ -40,7 +40,7 @@ export function QuestionResponsePanel(panelProps: QuestionResponsePanelProps) {
       <ToolPanelHeader
         title={questionContent.title ?? "Reading Companion"}
         subtitle={questionContent.subtitle ?? "Here to help"}
-        avatarSlot="bubble_peek"
+        avatarSlot="peek"
       />
 
       <QuestionContent messages={visibleMessages} prompt={questionContent.prompt} />

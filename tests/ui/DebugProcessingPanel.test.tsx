@@ -37,8 +37,10 @@ describe("DebugProcessingPanel", () => {
     expect(screen.getByLabelText("Policy")).toHaveTextContent("allowed chunk_ready");
     expect(screen.getByLabelText("Model queue")).toHaveTextContent("queued");
     expect(screen.getByLabelText("Recent model calls")).toHaveTextContent("ask_question");
-    expect(screen.getByLabelText("Recent model calls")).toHaveTextContent("input=");
-    expect(screen.getByLabelText("Recent model calls")).toHaveTextContent("result=ask_question returned question");
+    expect(screen.getByLabelText("Recent model calls")).toHaveTextContent("Input");
+    expect(screen.getByLabelText("Recent model calls")).toHaveTextContent("{\"chunkId\":\"chunk-1\"}");
+    expect(screen.getByLabelText("Recent model calls")).toHaveTextContent("Output");
+    expect(screen.getByLabelText("Recent model calls")).toHaveTextContent("ask_question returned question");
     expect(screen.getByLabelText("Recent model calls")).toHaveTextContent("241ms");
     expect(screen.getByText("Policy machine")).toBeInTheDocument();
     expect(screen.getByText("Policy machine: 4 quiet -> eligible via viewport (chunk ready)")).toBeInTheDocument();

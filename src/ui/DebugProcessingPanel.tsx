@@ -89,7 +89,7 @@ function DebugProcessingSnapshot({ snapshot }: { snapshot: DebugSnapshot }) {
       <DebugFacts className="rc-debug__section--compact" title="Provider and settings" status={providerStatus(snapshot)} facts={providerFacts(snapshot)} />
       <DebugFacts className="rc-debug__section--compact" title="Page" status={snapshot.contentType} facts={pageFacts(snapshot)} />
       <DebugFacts className="rc-debug__section--wide" title="Model queue" status={modelQueueStatus(snapshot)} facts={modelQueueFacts(snapshot)} />
-      <DebugList className="rc-debug__section--full rc-debug__section--timeline" title="Recent model calls" items={modelCallItems(snapshot)} empty="No model calls captured." />
+      <DebugModelCalls snapshot={snapshot} />
       <DebugFacts className="rc-debug__section--wide" title="Intervention surfaces" status={interventionSurfaceStatus(snapshot)} facts={interventionSurfaceFacts(snapshot)} />
       <DebugList className="rc-debug__section--full" title="Recent transitions" items={transitionItems(snapshot)} empty="No transitions captured." />
       <DebugList className="rc-debug__section--split" title="Recent events" items={eventItems(snapshot)} empty="No recent events." />
@@ -132,6 +132,57 @@ function DebugStateMachines({ snapshot }: { snapshot: DebugSnapshot }) {
         ))}
       </div>
     </CollapsibleDebugSection>
+  );
+}
+
+function DebugModelCalls({ snapshot }: { snapshot: DebugSnapshot }) {
+  const calls = snapshot.runtimeSpine?.recentModelCalls ?? [];
+  if (calls.length === 0) {
+    return (
+      <DebugList
+        className="rc-debug__section--full rc-debug__section--timeline"
+        title="Recent model calls"
+        items={modelCallEventItems(snapshot)}
+        empty="No model calls captured."
+      />
+    );
+  }
+
+  return (
+    <CollapsibleDebugSection className="rc-debug__section--full rc-debug__section--timeline" title="Recent model calls" status={String(calls.length)}>
+      <ol className="rc-debug__model-calls">
+        {calls.slice(0, 8).map((call, index) => (
+          <li key={call.id}>
+            <details className="rc-debug__model-call" open={index === 0}>
+              <summary>
+                <span className={`rc-debug__pill rc-debug__pill--${call.status}`}>{call.status}</span>
+                <span>{formatModelCallHeadline(call)}</span>
+              </summary>
+              <div className="rc-debug__model-call-body">
+                <DebugPayloadBlock label="Input" value={call.input} />
+                <DebugPayloadBlock label="Output" value={call.result} />
+                <dl className="rc-debug__facts rc-debug__model-call-facts">
+                  <FragmentPair label="Action" value={call.action ?? "none"} />
+                  <FragmentPair label="Kind" value={call.kind ?? "unknown"} />
+                  <FragmentPair label="Job" value={call.jobStatus ?? "unknown"} />
+                  <FragmentPair label="Validation" value={call.validation ?? "none"} />
+                  <FragmentPair label="Error" value={call.error ?? "none"} />
+                </dl>
+              </div>
+            </details>
+          </li>
+        ))}
+      </ol>
+    </CollapsibleDebugSection>
+  );
+}
+
+function DebugPayloadBlock({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="rc-debug__payload">
+      <strong>{label}</strong>
+      <pre>{value || "none"}</pre>
+    </div>
   );
 }
 
@@ -362,9 +413,7 @@ function transitionItems(snapshot: DebugSnapshot): DebugListItem[] {
   return [...policyTransition, ...machineTransitions];
 }
 
-function modelCallItems(snapshot: DebugSnapshot): DebugListItem[] {
-  const directCalls = snapshot.runtimeSpine?.recentModelCalls ?? [];
-  if (directCalls.length > 0) return directCalls.map(formatModelCall);
+function modelCallEventItems(snapshot: DebugSnapshot): DebugListItem[] {
   return snapshot.recentEvents.filter(isModelEvent).map((event) => ({
     badge: event.code === "MODEL_REQUEST_FAILED" ? "fail" : event.code === "INTERVENTION_MODEL_STAYED_QUIET" ? "pending" : "pass",
     text: `${formatTime(event.timestamp)} ${event.code}: ${event.message}${formatMetadata(event.metadata)}`
@@ -382,22 +431,17 @@ function logItems(snapshot: DebugSnapshot): DebugListItem[] {
   return (snapshot.runtimeSpine?.recentLogLines ?? []).map((text) => ({ badge: "log", text }));
 }
 
-function formatModelCall(call: DebugModelCallSnapshot): DebugListItem {
+function formatModelCallHeadline(call: DebugModelCallSnapshot): string {
   const details = [
     call.kind,
     call.jobStatus,
     call.action,
     call.validation ? `validation=${call.validation}` : undefined,
-    call.input ? `input=${call.input}` : undefined,
-    call.result ? `result=${call.result}` : undefined,
     call.error ? `error=${call.error}` : undefined,
     call.durationMilliseconds === undefined ? undefined : formatMilliseconds(call.durationMilliseconds)
   ]
     .filter((value): value is string => Boolean(value));
-  return {
-    badge: call.status,
-    text: `${formatTime(call.timestamp)} ${call.model ?? "model"}${details.length > 0 ? `: ${details.join(" | ")}` : ""}`
-  };
+  return `${formatTime(call.timestamp)} ${call.model ?? "model"}${details.length > 0 ? `: ${details.join(" | ")}` : ""}`;
 }
 
 function formatTransition(transition: DebugTransitionSnapshot): string {

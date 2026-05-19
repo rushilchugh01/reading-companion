@@ -1,4 +1,4 @@
-import type { PetStateKey } from "./companion-types";
+import type { PetStateKey } from "./pet-state-types";
 import type { ContentType, ReadingChunk } from "./reading-types";
 import type { CognitiveMove, CompanionSettings, InterventionPolicyId } from "./settings-types";
 

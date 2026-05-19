@@ -1,6 +1,6 @@
 export type InteractionStateValue =
   | "pet_visible"
-  | "bubble_peek"
+  | "peek"
   | "chat_open"
   | "snoozed"
   | "hidden"
@@ -38,7 +38,7 @@ export function transitionInteractionState(
     case "close_chat":
       return { value: "pet_visible", updatedAt: event.now };
     case "peek_bubble":
-      return { value: "bubble_peek", updatedAt: event.now };
+      return { value: "peek", updatedAt: event.now };
     case "open_chat":
       if (state.value === "hidden") {
         return { ...state, updatedAt: event.now };

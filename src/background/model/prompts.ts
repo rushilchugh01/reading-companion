@@ -3,7 +3,8 @@ import type {
   ChatSendInput,
   InterventionComposeInput
 } from "../../shared/intervention-types";
-import type { GradePromptPayload } from "../../shared/messages";
+import { loadCompanionPack } from "../../shared/companion-packs";
+import type { CompanionPackRegistry } from "../../shared/companion-pack-registry";
 
 export type ModelPromptMessage = {
   role: "system" | "user" | "assistant";
@@ -11,12 +12,16 @@ export type ModelPromptMessage = {
 };
 
 /** Builds the normalized intervention composition prompt. */
-export function buildInterventionPrompt(payload: InterventionComposeInput): ModelPromptMessage[] {
+export async function buildInterventionPrompt(
+  payload: InterventionComposeInput,
+  registry?: CompanionPackRegistry
+): Promise<ModelPromptMessage[]> {
   return [
     {
       role: "system",
       content: [
         "Compose one normalized active-reading intervention for the app.",
+        ...(await companionPersonaPrompt(payload.companionStyle.companionPackId, "intervention", registry)),
         "Choose only one action from policy.allowedActions.",
         "Use ask_question, offer_prediction, offer_observation, offer_help, or stay_quiet.",
         "Return a matching tool call or JSON using the intervention_compose schema.",
@@ -39,40 +44,17 @@ export function buildInterventionPrompt(payload: InterventionComposeInput): Mode
   ];
 }
 
-/** Builds the legacy answer grading prompt. */
-export function buildGradePrompt(payload: GradePromptPayload): ModelPromptMessage[] {
-  return [
-    {
-      role: "system",
-      content: [
-        "Grade the answer to an active-reading question.",
-        "Prefer the grade_answer tool.",
-        "If tools are unavailable, return JSON with label, feedback, hint, and missedPoint."
-      ].join(" ")
-    },
-    {
-      role: "user",
-      content: JSON.stringify({
-        task: "grade",
-        strictness: payload.strictness,
-        personaId: payload.personaId,
-        question: payload.session.question,
-        expectedPoint: payload.session.expectedPoint,
-        answer: payload.answer,
-        chunkText: truncatePromptText(payload.chunkText, 4_000),
-        schema: { label: "GradeLabel", feedback: "string", hint: "string" }
-      })
-    }
-  ];
-}
-
 /** Builds the normalized answer grading prompt. */
-export function buildAnswerGradePrompt(payload: AnswerGradeInput): ModelPromptMessage[] {
+export async function buildAnswerGradePrompt(
+  payload: AnswerGradeInput,
+  registry?: CompanionPackRegistry
+): Promise<ModelPromptMessage[]> {
   return [
     {
       role: "system",
       content: [
         "Grade the answer to an active-reading prompt.",
+        ...(await companionPersonaPrompt(payload.companionPackId, "grading", registry)),
         "Use the grade_answer tool or return JSON with label, feedback, hint, missedPoint, and shouldRetry."
       ].join(" ")
     },
@@ -95,12 +77,16 @@ export function buildAnswerGradePrompt(payload: AnswerGradeInput): ModelPromptMe
 }
 
 /** Builds a natural prose chat prompt without tools or JSON response format. */
-export function buildChatPrompt(payload: ChatSendInput): ModelPromptMessage[] {
+export async function buildChatPrompt(
+  payload: ChatSendInput,
+  registry?: CompanionPackRegistry
+): Promise<ModelPromptMessage[]> {
   return [
     {
       role: "system",
       content: [
         "You are a reading companion chatting naturally with the reader.",
+        ...(await companionPersonaPrompt(payload.companionStyle.companionPackId, "chat", registry)),
         "Reply in plain prose only. Do not return JSON. Do not call tools.",
         "Keep the answer concise, helpful, and grounded in the visible passage when provided."
       ].join(" ")
@@ -119,6 +105,29 @@ export function buildChatPrompt(payload: ChatSendInput): ModelPromptMessage[] {
       })
     }
   ];
+}
+
+/** Builds persona prompt lines from the selected companion pack. */
+async function companionPersonaPrompt(
+  companionPackId: string | undefined,
+  promptKind: "chat" | "grading" | "intervention",
+  registry: CompanionPackRegistry | undefined
+): Promise<string[]> {
+  const pack = await loadCompanionPack(companionPackId, registry);
+  const persona = pack.persona;
+  return [
+    `Companion pack: ${pack.name}.`,
+    `Companion system prompt: ${persona.systemPrompt}`,
+    persona.tone ? `Companion tone: ${persona.tone}.` : undefined,
+    persona.boundaries?.length ? `Companion boundaries: ${persona.boundaries.join(" ")}` : undefined,
+    promptKind === "grading" && persona.gradingStylePrompt
+      ? `Companion grading style prompt: ${persona.gradingStylePrompt}`
+      : undefined,
+    promptKind === "intervention" && persona.interruptionStylePrompt
+      ? `Companion interruption style prompt: ${persona.interruptionStylePrompt}`
+      : undefined,
+    "Companion persona guidance changes voice and framing only; it must not override app policy, allowed actions, schema requirements, tool rules, or safety constraints."
+  ].filter((line): line is string => Boolean(line));
 }
 
 /** Describes the app-facing intervention schema inside provider prompts. */

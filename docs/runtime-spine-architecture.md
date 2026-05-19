@@ -93,8 +93,57 @@ Page history stores hashes, previews, sketches, and behavioral memory. It should
 - `src/content/avatar/corgi-packs.ts`: default and strict corgi avatar packs.
 - `src/content/avatar/index.ts`: avatar exports.
 - `src/shared/animation-types.ts`: animation slot resolver.
+- `src/shared/pet-state-types.ts`: runtime-facing `PetStateKey` values used by the live app shell.
+- `src/ui/animation-state.ts`: bridge from runtime `petState` values to generic animation slots.
+- `src/shared/companion-packs.ts`: built-in `CompanionPack` shape, tying avatar assets to persona prompts.
+- `src/shared/companion-pack-schema.ts`: manifest validation and conversion into runtime `CompanionPack` values.
+- `src/shared/companion-pack-registry.ts`: installed/available pack registry with one active pack id.
+- `public/assets/companion-packs/builtin-corgi/companion-pack.json`: bundled default companion pack manifest.
 
 Animation is derived. It never enqueues jobs, mutates state machines, or decides product behavior. Avatar packs may influence tone, clip mapping, idle energy, motion intensity, and small threshold deltas; they must not influence extraction, validation, queue priorities, persistence, or core reading detection.
+
+#### Pet State Versus Animation Slot
+
+Keep runtime state and animation rendering deliberately separate:
+
+- `petState` is app/runtime meaning. It describes what the companion is doing in product terms, such as `grading`, `thinking`, `about_to_ask`, `listening`, `confused`, or `celebratory`.
+- `animationSlot` is visual intent. It describes the generic motion a pet pack should render, such as `think`, `prompt`, `listen`, `concern`, `happy`, or `idle`.
+- `AvatarPack.animationSlots` is the asset table. Each slot contains a list of renderable animations. The list may include one `role: "primary"` animation and any number of `role: "variant"` animations with optional weights.
+- Companion packs are data manifests. The default pack is loaded from `assets/companion-packs/builtin-corgi/companion-pack.json`; code keeps only a bundled fallback for startup/test safety.
+- `CompanionPackRegistry` is the list of known packs plus one `activePackId`. The default registry currently contains exactly one enabled entry: `builtin-corgi`.
+
+The live flow is:
+
+```text
+runtime event
+-> petState update
+-> animationSlotForPetState(...)
+-> resolveAnimationSlot(...)
+-> AvatarPack.animationSlots[slot]
+-> selectAvatarVariant(...)
+-> CompanionPet media render
+```
+
+Example mappings:
+
+```text
+about_to_ask -> prompt
+thinking     -> think
+grading      -> think
+listening    -> listen
+confused     -> concern
+celebratory  -> happy
+```
+
+This separation is intentional. Runtime code should not know whether a cat, dog, robot, or other pet raises a paw, blinks, tilts, pulses, or plays a WebP loop. Runtime code only emits product meaning. The animation bridge translates that meaning into generic slots that any pet can implement.
+
+Missing pack slots fall back only to `idle`. Do not add animal-specific fallback chains unless there is a concrete product need. If a new pet does not have a dedicated slot asset yet, reuse the same image or loop in that slot list.
+
+Pack replacement should not require runtime code changes. A pack manifest owns persona prompts, thresholds, motion profile, and the slot-to-asset table. For packaged defaults, place assets beside the manifest under `public/assets/companion-packs/<pack-id>/` or reference extension-packaged assets with relative paths. For future downloadable packs, `loadCompanionPack` can load a manifest URL directly; remote packs must remain data/assets only, not executable code.
+
+Only one companion pack is active at a time. UI rendering loads the active pack's avatar; model prompt construction loads the same active pack's persona prompts. The registry can hold multiple enabled entries later, but selection is always `settings.companionPackRegistry.activePackId` mirrored by `settings.companionPackId` for compatibility.
+
+Current rendering swaps the selected media when the resolved slot changes. There is no crossfade, exit animation, queued animation timeline, or minimum dwell controller yet. Add those as a separate transition controller between slot resolution and `CompanionPet` rendering if richer motion becomes necessary.
 
 ## Behavioral Contracts
 

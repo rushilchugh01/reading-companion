@@ -1,4 +1,5 @@
 import type { ModelProviderId } from "./provider-catalog";
+import type { CompanionPackRegistry } from "./companion-pack-registry";
 
 export type ModelReasoningLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
@@ -77,7 +78,11 @@ export type CompanionSettings = {
   interventionPolicy: InterventionPolicySettings;
   interventionFrequency: "low" | "medium" | "high";
   readGatingMode: "strict" | "balanced" | "look_ahead";
+  companionPackId: string;
+  companionPackRegistry: CompanionPackRegistry;
+  /** @deprecated Use companionPackId. Kept for stored settings migration. */
   personaId: string;
+  /** @deprecated Use companionPackId. Kept for stored settings migration. */
   avatarPackId: string;
   strictness: "chill" | "medium" | "strict";
   storageMode: "local_only" | "local_plus_cloud" | "cloud_only";

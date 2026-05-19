@@ -49,6 +49,7 @@ test.describe("Cliproxy Gemini live smoke", () => {
         payload: {
           requestId: "cliproxy-gemini-smoke",
           companionStyle: {
+            companionPackId: "builtin-corgi",
             personaId: "brutal-tutor-dog",
             readGatingMode: "balanced",
             strictness: "medium"

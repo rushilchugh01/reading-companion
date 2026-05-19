@@ -1,6 +1,6 @@
 import type { AnimationRuntimeState, AnimationSlot } from "../shared/animation-types";
 import { resolveAnimationSlot } from "../shared/animation-types";
-import type { PetStateKey } from "../shared/companion-types";
+import type { PetStateKey } from "../shared/pet-state-types";
 
 const PET_STATE_ANIMATION_FACTS: Record<PetStateKey, AnimationRuntimeState> = {
   about_to_ask: { intervention: { prompting: true } },

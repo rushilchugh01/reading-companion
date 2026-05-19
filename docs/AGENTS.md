@@ -28,18 +28,30 @@ This document is a fast orientation guide for agents working in this repo. It ma
 - `src/shared/intervention-types.ts`: normalized `intervention:compose`, answer grading, chat, page-map, and chunk-sketch contracts.
 - `src/shared/model-job-types.ts`: background queue kinds, priorities, TTLs, job records, and debug snapshots.
 - `src/shared/runtime-types.ts`: runtime freshness snapshot used for stale-result validation.
-- `src/shared/companion-types.ts`: pet state keys used by the live UI/runtime.
+- `src/shared/pet-state-types.ts`: pet state keys used by the live UI/runtime.
 
 ## Avatar And Assets
 
 - `src/ui/CompanionPet.tsx`: renders the active avatar pack from resolved animation slots.
+- `src/ui/animation-state.ts`: maps runtime `petState` values to generic `animationSlot` values.
 - `src/ui/avatar-pack.ts`: built-in corgi avatar pack that reuses the current PNG assets.
+- `src/shared/animation-types.ts`: canonical animation slots, slot priority resolver, avatar-pack asset shape, and weighted variant selection.
+- `src/shared/companion-packs.ts`: companion pack shape combining an avatar pack with persona prompts.
+- `src/shared/companion-pack-schema.ts`: validates and materializes manifest-driven companion packs.
+- `src/shared/companion-pack-registry.ts`: stores the known pack list and the one active pack id.
+- `public/assets/companion-packs/builtin-corgi/companion-pack.json`: default bundled companion pack manifest.
 - `public/assets/corgi-states-transparent/*.png`: shipped transparent corgi sprites.
 - `assets/source/corgi-states-original/*.png`: original generated source sprites, not shipped.
 - `assets/source/v0-dog-companion/*.png`: older source dog assets, not shipped.
 - `docs/assets/v0-dog-companion-prompts.md`: earlier asset prompt notes.
 
 Asset note: transparent sprites were generated with `rembg`. Originals are kept outside `public/` so WXT does not copy them into the built extension.
+
+Architecture note: keep `petState` and `animationSlot` separate. `petState` is runtime/product meaning, for example `grading`, `about_to_ask`, or `confused`. `animationSlot` is generic visual intent, for example `think`, `prompt`, or `concern`. Animal packs implement `AvatarPack.animationSlots`; runtime code should not depend on animal-specific motions or asset names. See `docs/runtime-spine-architecture.md` for the full contract.
+
+Slottability note: companion packs should be changed through manifests and assets, not app logic. The bundled corgi is the default manifest-backed pack; code fallback exists only so tests/startup still have a guaranteed idle-capable pack if manifest loading fails.
+
+Registry note: multiple pack entries are supported through `CompanionPackRegistry`, but only one active pack is used at a time. The default registry intentionally contains only `builtin-corgi` until more bundled packs or install flows exist.
 
 ## Content Runtime
 

@@ -38,7 +38,8 @@ export default defineConfig({
     web_accessible_resources: [
       {
         resources: [
-          "assets/corgi-states-transparent/*.png"
+          "assets/corgi-states-transparent/*.png",
+          "assets/companion-packs/*/companion-pack.json"
         ],
         matches: ["http://*/*", "https://*/*", "file:///*"]
       }

@@ -1,18 +1,4 @@
-import type { AnimationSlot, AvatarPack, AvatarSlotConfig, AvatarVariant } from "../../shared/animation-types";
-
-const FALLBACK_CHAIN: AvatarPack["fallbacks"] = {
-  deep_focus: "focus",
-  skim_watch: "idle",
-  concern: "focus",
-  raise_paw: "bubble_peek",
-  happy: "idle",
-  dismissed_settle: "quiet_idle",
-  sit_back_down: "idle",
-  back_off: "quiet_idle",
-  low_energy_idle: "quiet_idle",
-  error_soft: "quiet_idle",
-  quiet_idle: "idle"
-};
+import type { AnimationSlot, AvatarAnimation, AvatarPack, AvatarSlotConfig } from "../../shared/animation-types";
 
 const DEFAULT_SUPPORTED_SLOTS: readonly AnimationSlot[] = [
   "hidden",
@@ -24,15 +10,15 @@ const DEFAULT_SUPPORTED_SLOTS: readonly AnimationSlot[] = [
   "deep_focus",
   "skim_watch",
   "concern",
-  "raise_paw",
-  "bubble_peek",
+  "prompt",
+  "peek",
   "listen",
   "think",
   "explain",
   "happy",
   "dismissed_settle",
   "error_soft",
-  "sit_back_down",
+  "settle",
   "back_off",
   "quiet_idle",
   "low_energy_idle"
@@ -45,7 +31,7 @@ const STRICT_SUPPORTED_SLOTS: readonly AnimationSlot[] = [
   "scan",
   "article_found",
   "focus",
-  "bubble_peek",
+  "peek",
   "listen",
   "think",
   "explain",
@@ -58,13 +44,7 @@ export const corgiDefaultPack: AvatarPack = {
   name: "Corgi Default",
   version: "1.0.0",
   species: "corgi",
-  slots: createSlots(DEFAULT_SUPPORTED_SLOTS, "default"),
-  fallbacks: FALLBACK_CHAIN,
-  personality: {
-    tone: "gentle",
-    promptStyle: "curious and brief",
-    backoffCopy: "Settling down for a bit."
-  },
+  animationSlots: createSlots(DEFAULT_SUPPORTED_SLOTS, "default"),
   thresholds: {
     maxIntensity: 2,
     proactiveMotionMinimumMilliseconds: 900,
@@ -84,13 +64,7 @@ export const corgiStrictPack: AvatarPack = {
   name: "Corgi Strict",
   version: "1.0.0",
   species: "corgi",
-  slots: createSlots(STRICT_SUPPORTED_SLOTS, "strict"),
-  fallbacks: FALLBACK_CHAIN,
-  personality: {
-    tone: "strict",
-    promptStyle: "direct and sparse",
-    backoffCopy: "Backing off. Resume only when useful."
-  },
+  animationSlots: createSlots(STRICT_SUPPORTED_SLOTS, "strict"),
   thresholds: {
     maxIntensity: 1,
     proactiveMotionMinimumMilliseconds: 1_500,
@@ -106,18 +80,19 @@ export const corgiStrictPack: AvatarPack = {
 
 /** Creates placeholder slot descriptors for every supported slot in a pack. */
 function createSlots(
-  slots: readonly AnimationSlot[],
+  animationSlots: readonly AnimationSlot[],
   packKey: "default" | "strict"
 ): Partial<Record<AnimationSlot, AvatarSlotConfig>> {
-  return Object.fromEntries(slots.map((slot) => [slot, { primary: createVariant(slot, packKey) }]));
+  return Object.fromEntries(animationSlots.map((slot) => [slot, [createAnimation(slot, packKey)]]));
 }
 
-/** Creates one deterministic variant descriptor for an avatar slot. */
-function createVariant(slot: AnimationSlot, packKey: "default" | "strict"): AvatarVariant {
+/** Creates one deterministic animation descriptor for an avatar slot. */
+function createAnimation(slot: AnimationSlot, packKey: "default" | "strict"): AvatarAnimation {
   return {
     id: `${packKey}-${slot}`,
     src: `/assets/avatar/corgi/${packKey}/${slot}.json`,
     type: "lottie",
+    role: "primary",
     durationMilliseconds: durationForSlot(slot),
     intensity: intensityForSlot(slot, packKey),
     loop: loopingSlot(slot)
@@ -127,7 +102,7 @@ function createVariant(slot: AnimationSlot, packKey: "default" | "strict"): Avat
 /** Returns the nominal playback duration for a slot. */
 function durationForSlot(slot: AnimationSlot): number {
   if (slot === "hidden") return 0;
-  if (slot === "raise_paw" || slot === "bubble_peek") return 700;
+  if (slot === "prompt" || slot === "peek") return 700;
   if (slot === "think" || slot === "explain") return 1_100;
   return 1_600;
 }
@@ -136,7 +111,7 @@ function durationForSlot(slot: AnimationSlot): number {
 function intensityForSlot(slot: AnimationSlot, packKey: "default" | "strict"): 0 | 1 | 2 | 3 {
   if (slot === "hidden" || slot === "sleep" || slot === "quiet_idle") return 0;
   if (packKey === "strict") return 1;
-  if (slot === "raise_paw" || slot === "happy") return 2;
+  if (slot === "prompt" || slot === "happy") return 2;
   return 1;
 }
 

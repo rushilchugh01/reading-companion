@@ -11,9 +11,9 @@ import type {
   PageMapResult
 } from "../shared/intervention-types";
 import { createCompanionLogger } from "../shared/logger";
-import type { GradePromptPayload, QuestionPromptPayload } from "../shared/messages";
+import type { QuestionPromptPayload } from "../shared/messages";
 import type { CompanionSettings } from "../shared/settings-types";
-import type { GradeResult, QuestionGenerationResult, QuestionSession, QuestionStyle } from "../shared/session-types";
+import type { QuestionGenerationResult, QuestionSession, QuestionStyle } from "../shared/session-types";
 import {
   legacyQuestionRecordFromResult,
   normalizeGradeResult,
@@ -23,7 +23,6 @@ import {
 import {
   buildAnswerGradePrompt,
   buildChatPrompt,
-  buildGradePrompt,
   buildInterventionPrompt,
   type ModelPromptMessage
 } from "./model/prompts";
@@ -151,7 +150,7 @@ export class ModelClient {
   ): Promise<QuestionGenerationResult> {
     try {
       const input = this.questionPayloadToInterventionInput(payload, settings);
-      const result = await this.runPrompt(settings, buildInterventionPrompt(input));
+      const result = await this.runPrompt(settings, await buildInterventionPrompt(input, settings.companionPackRegistry));
       return this.questionFromModelResult(result, payload, input);
     } catch (error) {
       modelLogger.warn("question provider request failed", { error: errorMessage(error) });
@@ -165,7 +164,7 @@ export class ModelClient {
     settings: CompanionSettings
   ): Promise<InterventionComposeResult> {
     try {
-      const result = await this.runPrompt(settings, buildInterventionPrompt(payload));
+      const result = await this.runPrompt(settings, await buildInterventionPrompt(payload, settings.companionPackRegistry));
       return normalizeInterventionResult(result, payload);
     } catch (error) {
       modelLogger.warn("intervention provider request failed", { error: errorMessage(error) });
@@ -173,29 +172,15 @@ export class ModelClient {
     }
   }
 
-  /** Grades an answer with a configured model provider. */
-  public async gradeAnswer(
-    payload: GradePromptPayload,
-    settings: CompanionSettings
-  ): Promise<GradeResult>;
-
   /** Grades an answer with the normalized answer grading contract. */
   public async gradeAnswer(
     payload: AnswerGradeInput,
     settings: CompanionSettings
-  ): Promise<AnswerGradeResult>;
-
-  /** Grades an answer with either legacy or normalized inputs. */
-  public async gradeAnswer(
-    payload: GradePromptPayload | AnswerGradeInput,
-    settings: CompanionSettings
-  ): Promise<GradeResult | AnswerGradeResult> {
+  ): Promise<AnswerGradeResult> {
     try {
-      const messages = isAnswerGradeInput(payload)
-        ? buildAnswerGradePrompt(payload)
-        : buildGradePrompt(payload);
+      const messages = await buildAnswerGradePrompt(payload, settings.companionPackRegistry);
       const result = await this.runPrompt(settings, messages);
-      return this.gradeFromModelResult(result, isAnswerGradeInput(payload) ? payload.requestId : undefined);
+      return this.gradeFromModelResult(result, payload.requestId);
     } catch (error) {
       modelLogger.warn("grading provider request failed", { error: errorMessage(error) });
       throw providerRequestError(error);
@@ -208,7 +193,7 @@ export class ModelClient {
     settings: CompanionSettings
   ): Promise<ChatSendResult> {
     try {
-      const result = await this.runPrompt(settings, buildChatPrompt(payload), { responseFormat: "text", tools: "none" });
+      const result = await this.runPrompt(settings, await buildChatPrompt(payload, settings.companionPackRegistry), { responseFormat: "text", tools: "none" });
       return {
         requestId: payload.requestId,
         text: result.text.trim()
@@ -372,6 +357,7 @@ export class ModelClient {
         confidence: payload.opportunity?.confidence
       },
       companionStyle: {
+        companionPackId: settings.companionPackId,
         personaId: payload.personaId,
         strictness: settings.strictness,
         readGatingMode: payload.readGatingMode
@@ -381,8 +367,8 @@ export class ModelClient {
     };
   }
 
-  /** Converts provider output into either grade result contract. */
-  private gradeFromModelResult(result: PiModelResult, requestId?: string): GradeResult | AnswerGradeResult {
+  /** Converts provider output into the normalized answer grade contract. */
+  private gradeFromModelResult(result: PiModelResult, requestId: string): AnswerGradeResult {
     modelLogger.debug("grading model result received", { tools: result.toolCalls.map((toolCall) => toolCall.name) });
     return normalizeGradeResult(result, requestId);
   }
@@ -396,11 +382,6 @@ function providerRequestError(error: unknown): Error {
 /** Converts unknown thrown values into readable messages. */
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-/** Distinguishes the normalized grade contract from the legacy prompt payload. */
-function isAnswerGradeInput(payload: GradePromptPayload | AnswerGradeInput): payload is AnswerGradeInput {
-  return "userAnswer" in payload;
 }
 
 /** Returns undefined when a result is a legacy question JSON shape. */

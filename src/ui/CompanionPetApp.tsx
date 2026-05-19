@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { CompanionPet } from "./CompanionPet";
 import { animationSlotForPetState } from "./animation-state";
-import { getBuiltInAvatarPack } from "./avatar-pack";
+import { getBuiltInAvatarPack, loadCompanionPack } from "./avatar-pack";
 import { ActiveAvatarPackProvider } from "./avatar-context";
 import { clampPanelSize, clampPetPosition, getDefaultPetPosition, getHomePanelHorizontalStyle } from "./geometry";
 import { ToolPanel } from "./tool-panels";
@@ -94,7 +94,8 @@ type CompanionViewBinding = {
 /** Mountable companion UI with draggable pet, compact panel, and adapter callbacks. */
 export function CompanionPetApp(props: CompanionPetAppProps) {
   const petState = props.petState ?? "idle";
-  const activePack = getBuiltInAvatarPack(props.avatarPackId);
+  const requestedPackId = props.companionPackId ?? props.avatarPackId;
+  const activePack = useActiveCompanionPack(requestedPackId, props.companionPackRegistry);
   const animationSlot = animationSlotForPetState(petState);
   const [position, setPosition] = useState<PetPosition>(() => props.initialPosition ? clampPetPosition(props.initialPosition) : getDefaultPetPosition());
   const [panelSize, setPanelSize] = useState<PanelSize>(() => clampPanelSize(props.initialPanelSize ?? DEFAULT_PANEL_SIZE));
@@ -158,6 +159,29 @@ export function CompanionPetApp(props: CompanionPetAppProps) {
     startDrag,
     startResize
   })} activePack={activePack} animationSlot={animationSlot} />;
+}
+
+function useActiveCompanionPack(
+  packId: string | undefined,
+  registry: CompanionPetAppProps["companionPackRegistry"]
+): AvatarPack {
+  const [activePack, setActivePack] = useState<AvatarPack>(() => getBuiltInAvatarPack(packId));
+  useEffect(() => bindCompanionPack(packId, registry, setActivePack), [packId, registry]);
+  return activePack;
+}
+
+function bindCompanionPack(
+  packId: string | undefined,
+  registry: CompanionPetAppProps["companionPackRegistry"],
+  setActivePack: React.Dispatch<React.SetStateAction<AvatarPack>>
+) {
+  let cancelled = false;
+  void loadCompanionPack(packId, registry).then((pack) => {
+    if (!cancelled) setActivePack(pack.avatar);
+  });
+  return () => {
+    cancelled = true;
+  };
 }
 
 function getCompanionViewProps(

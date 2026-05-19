@@ -1,4 +1,4 @@
-/** Visual and behavioral state names understood by avatar packs. */
+/** Runtime-facing companion states; UI maps these to generic animation slots before rendering. */
 export type PetStateKey =
   | "idle"
   | "reading_detected"

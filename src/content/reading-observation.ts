@@ -3,7 +3,7 @@ import {
   createReadingSignals,
   transitionReadingState
 } from "../engine";
-import type { PetStateKey } from "../shared/companion-types";
+import type { PetStateKey } from "../shared/pet-state-types";
 import type { ReadingChunk, ReadingSignals } from "../shared/reading-types";
 
 export type SignalTracker = {

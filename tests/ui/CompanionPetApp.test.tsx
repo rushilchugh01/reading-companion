@@ -1,7 +1,9 @@
-import { createEvent, fireEvent, render, screen } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { COMPANION_CHAT_THEMES, CompanionPetApp } from "@/ui";
 import type { DebugSnapshot } from "@/shared/debug-types";
 import type { QuestionSession } from "@/shared/session-types";
+import type { CompanionPackManifest } from "@/shared/companion-pack-schema";
+import type { CompanionPackRegistry } from "@/shared/companion-pack-registry";
 
 const debugSnapshot: DebugSnapshot = {
   activeAvatarPack: "fallback-dog",
@@ -157,6 +159,34 @@ describe("CompanionPetApp", () => {
   });
 });
 
+describe("CompanionPetApp companion packs", () => {
+  it("loads the selected registry pack asset when the app is mounted", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(selectedPackManifest())
+    } as Response);
+
+    render(
+      <CompanionPetApp
+        companionPackId="visual-fox"
+        companionPackRegistry={selectedPackRegistry()}
+        petState="curious"
+      />
+    );
+
+    expect(document.querySelector(".rc-pet__sprite")).toHaveAttribute(
+      "src",
+      "/assets/corgi-states-transparent/curious.png"
+    );
+    await waitFor(() => expect(document.querySelector(".rc-pet__sprite")).toHaveAttribute(
+      "src",
+      "https://packs.example/visual-fox/scan.webp"
+    ));
+    expect(fetchMock).toHaveBeenCalledWith("https://packs.example/visual-fox/companion-pack.json");
+    fetchMock.mockRestore();
+  });
+});
+
 describe("CompanionPetApp home panel actions", () => {
   it("shows the settings button on the home panel without the legacy debug panel", () => {
     const onOpenSettings = vi.fn();
@@ -182,6 +212,51 @@ describe("CompanionPetApp home panel actions", () => {
     expect(onHideSite).toHaveBeenCalledTimes(1);
   });
 });
+
+function selectedPackRegistry(): CompanionPackRegistry {
+  return {
+    activePackId: "visual-fox",
+    entries: [{
+      id: "visual-fox",
+      name: "Visual Fox",
+      version: "1.0.0",
+      source: "remote",
+      manifestPath: "https://packs.example/visual-fox/companion-pack.json",
+      enabled: true
+    }]
+  };
+}
+
+function selectedPackManifest(): CompanionPackManifest {
+  return {
+    id: "visual-fox",
+    name: "Visual Fox",
+    avatar: {
+      id: "visual-fox",
+      name: "Visual Fox",
+      version: "1.0.0",
+      species: "fox",
+      animationSlots: {
+        idle: [{ id: "fox-idle", src: "idle.webp", type: "animated-webp", role: "primary" }],
+        scan: [{ id: "fox-scan", src: "scan.webp", type: "animated-webp", role: "primary" }]
+      },
+      thresholds: {
+        maxIntensity: 2,
+        proactiveMotionMinimumMilliseconds: 900,
+        backoffQuietMilliseconds: 90_000
+      },
+      motionProfile: {
+        energy: "medium",
+        bounce: 0.2,
+        gazeTracking: true,
+        reducedMotionSlot: "idle"
+      }
+    },
+    persona: {
+      systemPrompt: "You are Visual Fox."
+    }
+  };
+}
 
 describe("CompanionPetApp home panel input actions", () => {
   it("runs home panel reading actions and shows the result", async () => {

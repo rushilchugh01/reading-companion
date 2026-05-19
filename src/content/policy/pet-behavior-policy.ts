@@ -22,7 +22,7 @@ export type InterventionSurface =
 export type PetIntent =
   | "none"
   | "stay_available"
-  | "sit_back_down"
+  | "settle"
   | "back_off"
   | "keep_question_session";
 
@@ -137,7 +137,7 @@ function applyQuestionOutcome(
         questions: 20 * MINUTE,
         same_chunk: 60 * MINUTE
       }, "dismissed_question"),
-      intent: "sit_back_down",
+      intent: "settle",
       keepQuestionSession: false
     };
   }

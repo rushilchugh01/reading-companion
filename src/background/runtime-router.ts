@@ -1,6 +1,6 @@
 import type { Browser } from "wxt/browser";
 import { browser } from "wxt/browser";
-import type { ChatSendInput, InterventionComposeInput, InterventionComposeResult } from "../shared/intervention-types";
+import type { AnswerGradeInput, ChatSendInput, InterventionComposeInput, InterventionComposeResult } from "../shared/intervention-types";
 import type { RuntimeMessage } from "../shared/messages";
 import type { ModelJobDraft, ModelJobKind, ModelQueueDebugSnapshot } from "../shared/model-job-types";
 import type { CurrentRuntimeSnapshot } from "../shared/runtime-types";
@@ -34,7 +34,7 @@ type QueuedModelRequest = {
 };
 
 type QuestionGeneratePayload = Extract<RuntimeMessage, { type: "question:generate" }>["payload"];
-type AnswerGradePayload = Extract<RuntimeMessage, { type: "answer:grade" }>["payload"];
+type AnswerGradePayload = AnswerGradeInput;
 
 const backgroundLogger = createCompanionLogger("background");
 
@@ -269,9 +269,9 @@ export class RuntimeMessageRouter {
   private answerGradeJob(payload: AnswerGradePayload): ModelJobDraft<AnswerGradePayload> {
     return {
       kind: "answer_grade",
-      questionSessionId: payload.session.id,
-      attemptNumber: payload.session.attemptCount,
-      chunkId: payload.session.chunkId,
+      questionSessionId: payload.questionId,
+      attemptNumber: payload.attemptNumber,
+      chunkId: payload.passage?.chunkId,
       input: payload
     };
   }

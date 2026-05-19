@@ -1,4 +1,4 @@
-import type { PetStateKey } from "../shared/companion-types";
+import type { PetStateKey } from "../shared/pet-state-types";
 import type {
   DebugEvent,
   DebugModelCallSnapshot,
@@ -33,7 +33,7 @@ type DebugState = {
 /** Builds the debug panel snapshot from current runtime state. */
 export function createDebugSnapshot(state: DebugState, page: InterventionPageContext) {
   return {
-    activeAvatarPack: state.settings.avatarPackId,
+    activeAvatarPack: state.settings.companionPackId,
     chunks: state.chunks,
     contentType: state.parser.contentType,
     cooldownRemainingMilliseconds: 0,

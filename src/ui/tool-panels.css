@@ -79,11 +79,11 @@
 .rc-debug__lane-node strong,.rc-debug__machine strong{overflow:hidden;color:var(--rc-tool-text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;font-weight:850;text-overflow:ellipsis;white-space:nowrap;}
 .rc-debug__section{display:grid;gap:6px;padding:9px;border:1px solid color-mix(in srgb,var(--rc-tool-panel-border) 58%,#ffffff);border-radius:8px;background:rgb(255 255 255 / 66%);box-shadow:0 7px 16px rgb(46 35 28 / 7%);}
 .rc-debug__section,.rc-debug__section--compact,.rc-debug__section--wide,.rc-debug__section--full,.rc-debug__section--split{grid-column:1 / -1;}
-.rc-debug__section--timeline .rc-debug__list{max-height:320px;overflow-x:hidden;overflow-y:auto;padding-right:2px;scrollbar-width:thin;scrollbar-color:rgb(47 134 111 / 16%) transparent;}
-.rc-tool-input textarea::-webkit-scrollbar,.rc-question-response-panel__conversation::-webkit-scrollbar,.rc-debug__section--timeline .rc-debug__list::-webkit-scrollbar{width:6px;height:0;}
-.rc-tool-input textarea::-webkit-scrollbar-track,.rc-question-response-panel__conversation::-webkit-scrollbar-track,.rc-debug__section--timeline .rc-debug__list::-webkit-scrollbar-track{background:transparent;}
-.rc-tool-input textarea::-webkit-scrollbar-thumb,.rc-question-response-panel__conversation::-webkit-scrollbar-thumb,.rc-debug__section--timeline .rc-debug__list::-webkit-scrollbar-thumb{border-radius:999px;background:rgb(47 134 111 / 16%);}
-.rc-tool-input textarea::-webkit-scrollbar-thumb:hover,.rc-question-response-panel__conversation::-webkit-scrollbar-thumb:hover,.rc-debug__section--timeline .rc-debug__list::-webkit-scrollbar-thumb:hover{background:rgb(47 134 111 / 24%);}
+.rc-debug__section--timeline .rc-debug__list,.rc-debug__section--timeline .rc-debug__model-calls{max-height:320px;overflow-x:hidden;overflow-y:auto;padding-right:2px;scrollbar-width:thin;scrollbar-color:rgb(47 134 111 / 16%) transparent;}
+.rc-tool-input textarea::-webkit-scrollbar,.rc-question-response-panel__conversation::-webkit-scrollbar,.rc-debug__section--timeline .rc-debug__list::-webkit-scrollbar,.rc-debug__section--timeline .rc-debug__model-calls::-webkit-scrollbar{width:6px;height:0;}
+.rc-tool-input textarea::-webkit-scrollbar-track,.rc-question-response-panel__conversation::-webkit-scrollbar-track,.rc-debug__section--timeline .rc-debug__list::-webkit-scrollbar-track,.rc-debug__section--timeline .rc-debug__model-calls::-webkit-scrollbar-track{background:transparent;}
+.rc-tool-input textarea::-webkit-scrollbar-thumb,.rc-question-response-panel__conversation::-webkit-scrollbar-thumb,.rc-debug__section--timeline .rc-debug__list::-webkit-scrollbar-thumb,.rc-debug__section--timeline .rc-debug__model-calls::-webkit-scrollbar-thumb{border-radius:999px;background:rgb(47 134 111 / 16%);}
+.rc-tool-input textarea::-webkit-scrollbar-thumb:hover,.rc-question-response-panel__conversation::-webkit-scrollbar-thumb:hover,.rc-debug__section--timeline .rc-debug__list::-webkit-scrollbar-thumb:hover,.rc-debug__section--timeline .rc-debug__model-calls::-webkit-scrollbar-thumb:hover{background:rgb(47 134 111 / 24%);}
 .rc-debug__section summary{display:block;cursor:pointer;list-style:none;}
 .rc-debug__section summary::-webkit-details-marker{display:none;}
 .rc-debug__section summary h3::before{display:inline-grid;place-items:center;width:18px;height:18px;margin-right:6px;border:1px solid color-mix(in srgb,var(--rc-tool-primary) 28%,#ffffff);border-radius:999px;background:rgb(255 255 255 / 72%);color:var(--rc-tool-primary);font-size:10px;content:"▾";}
@@ -98,6 +98,15 @@
 .rc-debug__list,.rc-debug__machines,.rc-debug__machine ol{display:grid;gap:6px;margin:0;padding:0;list-style:none;}
 .rc-debug__list li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;align-items:start;min-width:0;padding:7px;border-radius:6px;background:rgb(255 255 255 / 72%);color:var(--rc-tool-text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;overflow-wrap:anywhere;}
 .rc-debug__list li > span:last-child{min-width:0;}
+.rc-debug__model-calls{display:grid;gap:7px;margin:0;padding:0;list-style:none;}
+.rc-debug__model-call{display:grid;gap:6px;padding:7px;border-radius:6px;background:rgb(255 255 255 / 72%);color:var(--rc-tool-text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;}
+.rc-debug__model-call summary{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;align-items:start;cursor:pointer;}
+.rc-debug__model-call summary span:last-child{min-width:0;overflow-wrap:anywhere;}
+.rc-debug__model-call-body{display:grid;gap:8px;margin-top:8px;}
+.rc-debug__payload{display:grid;gap:4px;min-width:0;}
+.rc-debug__payload strong{color:var(--rc-tool-muted);font-size:10px;text-transform:uppercase;}
+.rc-debug__payload pre{min-width:0;max-height:150px;margin:0;padding:7px;border:1px solid color-mix(in srgb,var(--rc-tool-panel-border) 56%,#ffffff);border-radius:6px;background:rgb(248 252 250 / 78%);overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;}
+.rc-debug__model-call-facts{padding-top:2px;}
 .rc-debug__pill--fail{border-color:rgb(203 91 72 / 34%);background:rgb(255 234 230 / 92%);color:#a64131;}
 .rc-debug__pill--pass{border-color:rgb(73 151 112 / 34%);background:rgb(228 248 238 / 92%);color:#2e7659;}
 .rc-debug__pill--pending{border-color:rgb(199 153 64 / 34%);background:rgb(255 245 218 / 92%);color:#896121;}

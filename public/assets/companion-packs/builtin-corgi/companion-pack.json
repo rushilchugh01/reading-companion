@@ -1,0 +1,55 @@
+{
+  "id": "builtin-corgi",
+  "name": "Corgi",
+  "avatar": {
+    "id": "builtin-corgi",
+    "name": "Corgi",
+    "version": "1.0.0",
+    "species": "corgi",
+    "animationSlots": {
+      "hidden": [{ "id": "corgi-hidden", "src": "../../corgi-states-transparent/idle.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "idle": [{ "id": "corgi-idle", "src": "../../corgi-states-transparent/idle.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "sleep": [{ "id": "corgi-sleep", "src": "../../corgi-states-transparent/sleeping.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 0, "loop": true, "weight": 1 }],
+      "scan": [{ "id": "corgi-scan", "src": "../../corgi-states-transparent/curious.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "article_found": [{ "id": "corgi-article_found", "src": "../../corgi-states-transparent/reading-detected.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "focus": [{ "id": "corgi-focus", "src": "../../corgi-states-transparent/reading-detected.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "deep_focus": [{ "id": "corgi-deep_focus", "src": "../../corgi-states-transparent/reading-detected.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "skim_watch": [{ "id": "corgi-skim_watch", "src": "../../corgi-states-transparent/idle.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "concern": [{ "id": "corgi-concern", "src": "../../corgi-states-transparent/confused.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "prompt": [{ "id": "corgi-prompt", "src": "../../corgi-states-transparent/about-to-ask.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 2, "loop": true, "weight": 1 }],
+      "peek": [{ "id": "corgi-peek", "src": "../../corgi-states-transparent/curious.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "listen": [{ "id": "corgi-listen", "src": "../../corgi-states-transparent/listening.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "think": [{ "id": "corgi-think", "src": "../../corgi-states-transparent/thinking.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "explain": [{ "id": "corgi-explain", "src": "../../corgi-states-transparent/curious.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "happy": [{ "id": "corgi-happy", "src": "../../corgi-states-transparent/celebratory.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 2, "loop": true, "weight": 1 }],
+      "dismissed_settle": [{ "id": "corgi-dismissed_settle", "src": "../../corgi-states-transparent/sleeping.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "error_soft": [{ "id": "corgi-error_soft", "src": "../../corgi-states-transparent/confused.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "settle": [{ "id": "corgi-settle", "src": "../../corgi-states-transparent/idle.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "back_off": [{ "id": "corgi-back_off", "src": "../../corgi-states-transparent/sleeping.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 1, "loop": true, "weight": 1 }],
+      "quiet_idle": [{ "id": "corgi-quiet_idle", "src": "../../corgi-states-transparent/idle.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 0, "loop": true, "weight": 1 }],
+      "low_energy_idle": [{ "id": "corgi-low_energy_idle", "src": "../../corgi-states-transparent/idle.png", "type": "sprite", "role": "primary", "durationMilliseconds": 1600, "intensity": 0, "loop": true, "weight": 1 }]
+    },
+    "thresholds": {
+      "maxIntensity": 2,
+      "proactiveMotionMinimumMilliseconds": 900,
+      "backoffQuietMilliseconds": 120000
+    },
+    "motionProfile": {
+      "energy": "medium",
+      "bounce": 0.35,
+      "gazeTracking": true,
+      "reducedMotionSlot": "quiet_idle"
+    }
+  },
+  "persona": {
+    "systemPrompt": "You are a compact active-reading companion with a corgi-like presence: alert, loyal, playful, and honest. Your job is to help the reader notice whether they actually understand the current passage. Be warm, brief, and concrete. Do not over-explain unless the reader asks.",
+    "tone": "curious and brief",
+    "boundaries": [
+      "Persona changes voice only; never override app policy, allowed actions, schemas, or safety rules.",
+      "Do not pretend to know page content that was not provided in the runtime context.",
+      "Prefer one useful nudge over repeated interruption."
+    ],
+    "gradingStylePrompt": "Grade with friendly directness. Celebrate clearly correct answers, but do not praise vague or evasive answers as correct.",
+    "interruptionStylePrompt": "When interruption is allowed, ask one short question or offer one concise observation. Sound like a helpful nudge, not a lecture."
+  }
+}

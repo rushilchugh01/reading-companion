@@ -122,7 +122,7 @@ function currentAnswerSession(snapshot: CurrentRuntimeSnapshot): RuntimeAnswerSe
 
 /** Returns the expected answer session id carried by a grade job. */
 function expectedSessionId(job: ModelJob<AnswerGradeModelInput>): string | undefined {
-  return job.questionSessionId ?? job.input.sessionId;
+  return job.questionSessionId ?? job.input.questionId;
 }
 
 /** Returns the active conversation id from either old or new snapshot fields. */

@@ -1,10 +1,10 @@
 import type { DebugEvent } from "./debug-types";
-import type { ChatSendInput, ChatSendResult, InterventionComposeInput, InterventionComposeResult } from "./intervention-types";
+import type { AnswerGradeInput, ChatSendInput, ChatSendResult, InterventionComposeInput, InterventionComposeResult } from "./intervention-types";
 import type { ModelQueueDebugSnapshot } from "./model-job-types";
 import type { CurrentRuntimeSnapshot } from "./runtime-types";
 import type { CompanionSettings } from "./settings-types";
 import type { CognitiveMove, InterventionPolicyId } from "./settings-types";
-import type { QuestionSession, WeakConcept } from "./session-types";
+import type { WeakConcept } from "./session-types";
 
 /** Runtime messages exchanged between content UI and background worker. */
 export type RuntimeMessage =
@@ -15,7 +15,7 @@ export type RuntimeMessage =
   | { type: "runtime:debugModelJobs" }
   | InterventionComposeRuntimeMessage
   | { type: "question:generate"; payload: QuestionPromptPayload }
-  | { type: "answer:grade"; payload: GradePromptPayload }
+  | { type: "answer:grade"; payload: AnswerGradeInput }
   | ChatSendRuntimeMessage
   | { type: "modelJob:cancelForPage"; payload: { pageId: string } }
   | { type: "weakConcept:save"; concept: WeakConcept }
@@ -44,13 +44,4 @@ export type QuestionPromptOpportunity = {
   confidence: number;
   suggestedMoves: CognitiveMove[];
   policyId: InterventionPolicyId;
-};
-
-/** Payload used for answer grading. */
-export type GradePromptPayload = {
-  session: QuestionSession;
-  answer: string;
-  chunkText: string;
-  personaId: string;
-  strictness: CompanionSettings["strictness"];
 };

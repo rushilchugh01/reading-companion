@@ -1,5 +1,6 @@
 import type { Message } from "@earendil-works/pi-ai";
-import type { PetStateKey } from "../shared/companion-types";
+import type { PetStateKey } from "../shared/pet-state-types";
+import type { CompanionPackRegistry } from "../shared/companion-pack-registry";
 import type { DebugSnapshot } from "../shared/debug-types";
 import type { GradeResult, QuestionSession } from "../shared/session-types";
 import type { CompanionPanelThemeId } from "./tool-panels/types";
@@ -44,6 +45,8 @@ export type CompanionConversationMessage = Message & {
 /** External state and callbacks for the companion UI. */
 export type CompanionPetAppProps = {
   petState?: PetStateKey;
+  companionPackId?: string;
+  companionPackRegistry?: CompanionPackRegistry;
   avatarPackId?: string;
   greeting?: string;
   questionSession?: QuestionSession;

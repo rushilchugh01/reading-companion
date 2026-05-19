@@ -1,6 +1,7 @@
 import { createDefaultSettings } from "@/shared/defaults";
-import type { ChatSendInput, InterventionComposeInput } from "@/shared/intervention-types";
-import type { GradePromptPayload, QuestionPromptPayload } from "@/shared/messages";
+import type { AnswerGradeInput, ChatSendInput, InterventionComposeInput } from "@/shared/intervention-types";
+import type { CompanionPackManifest } from "@/shared/companion-pack-schema";
+import type { QuestionPromptPayload } from "@/shared/messages";
 import { ModelClient } from "@/background/model-client";
 import { companionTools } from "@/background/companion-tools";
 import { createPiModel, enforceJsonPayload, type PiModelResult, type PiRequest } from "@/background/pi-model-provider";
@@ -20,21 +21,22 @@ function createClient(piRunner = vi.fn<(request: PiRequest) => Promise<PiModelRe
   });
 }
 
-function gradePayload(answer: string): GradePromptPayload {
+function gradePayload(answer: string): AnswerGradeInput {
   return {
-    answer,
-    chunkText: questionPayload.chunkText,
-    personaId: questionPayload.personaId,
-    strictness: "medium",
-    session: {
-      id: "question-1",
+    requestId: "grade-1",
+    questionId: "question-1",
+    attemptNumber: 0,
+    question: "What does photosynthesis convert?",
+    expectedAnswer: "Photosynthesis converts light energy into chemical energy.",
+    userAnswer: answer,
+    passage: {
       chunkId: "chunk-a",
-      question: "What does photosynthesis convert?",
-      style: "recall",
-      expectedPoint: "Photosynthesis converts light energy into chemical energy.",
-      attemptCount: 0,
-      createdAt: 1
-    }
+      heading: "Photosynthesis",
+      text: questionPayload.chunkText
+    },
+    companionPackId: "builtin-corgi",
+    personaId: questionPayload.personaId,
+    strictness: "medium"
   };
 }
 
@@ -57,7 +59,7 @@ function interventionInput(): InterventionComposeInput {
       policyId: "ambient_active_reading_v1",
       allowedActions: ["ask_question", "offer_prediction", "offer_observation", "offer_help", "stay_quiet"]
     },
-    companionStyle: { personaId: questionPayload.personaId },
+    companionStyle: { companionPackId: "builtin-corgi", personaId: questionPayload.personaId },
     history: [],
     expiresAt: 1_700_000_060_000
   };
@@ -72,9 +74,39 @@ function chatPayload(): ChatSendInput {
       chunkId: "chunk-a",
       text: questionPayload.chunkText
     },
-    companionStyle: { personaId: questionPayload.personaId },
+    companionStyle: { companionPackId: "builtin-corgi", personaId: questionPayload.personaId },
     history: [],
     message: "Can you explain that plainly?"
+  };
+}
+
+function clientPackManifest(): CompanionPackManifest {
+  return {
+    id: "client-lynx",
+    name: "Client Lynx",
+    avatar: {
+      id: "client-lynx",
+      name: "Client Lynx",
+      version: "1.0.0",
+      species: "lynx",
+      animationSlots: {
+        idle: [{ id: "lynx-idle", src: "idle.webp", type: "animated-webp", role: "primary" }]
+      },
+      thresholds: {
+        maxIntensity: 2,
+        proactiveMotionMinimumMilliseconds: 900,
+        backoffQuietMilliseconds: 90_000
+      },
+      motionProfile: {
+        energy: "medium",
+        bounce: 0.2,
+        gazeTracking: true,
+        reducedMotionSlot: "idle"
+      }
+    },
+    persona: {
+      systemPrompt: "You are Client Lynx."
+    }
   };
 }
 
@@ -197,6 +229,43 @@ describe("ModelClient intervention composition", () => {
       responseFormat: "text",
       tools: "none"
     });
+  });
+
+});
+
+describe("ModelClient companion pack selection", () => {
+  it("sends the selected companion pack persona through the model client", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(clientPackManifest())
+    } as Response);
+    const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
+      text: "Selected pack reply.",
+      toolCalls: []
+    }));
+    const settings = createDefaultSettings();
+    settings.companionPackId = "client-lynx";
+    settings.companionPackRegistry = {
+      activePackId: "client-lynx",
+      entries: [{
+        id: "client-lynx",
+        name: "Client Lynx",
+        version: "1.0.0",
+        source: "remote",
+        manifestPath: "https://packs.example/client-lynx/companion-pack.json",
+        enabled: true
+      }]
+    };
+
+    await createClient(piRunner).sendChat({
+      ...chatPayload(),
+      companionStyle: { companionPackId: "client-lynx", personaId: questionPayload.personaId }
+    }, settings);
+
+    expect(piRunner.mock.calls[0]?.[0].systemPrompt).toContain("Companion pack: Client Lynx.");
+    expect(piRunner.mock.calls[0]?.[0].systemPrompt).toContain("You are Client Lynx.");
+    expect(fetchMock).toHaveBeenCalledWith("https://packs.example/client-lynx/companion-pack.json");
+    fetchMock.mockRestore();
   });
 });
 

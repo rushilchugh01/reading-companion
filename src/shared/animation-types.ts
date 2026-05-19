@@ -9,15 +9,15 @@ export const ANIMATION_SLOTS = [
   "deep_focus",
   "skim_watch",
   "concern",
-  "raise_paw",
-  "bubble_peek",
+  "prompt",
+  "peek",
   "listen",
   "think",
   "explain",
   "happy",
   "dismissed_settle",
   "error_soft",
-  "sit_back_down",
+  "settle",
   "back_off",
   "quiet_idle",
   "low_energy_idle"
@@ -37,7 +37,7 @@ export type AnimationRuntimeState = {
   petBehavior?: {
     dismissedSettle?: boolean;
     backOff?: boolean;
-    sitBackDown?: boolean;
+    settle?: boolean;
     lowEnergy?: boolean;
     errorSoft?: boolean;
   };
@@ -65,34 +65,28 @@ export type AnimationRuntimeState = {
 };
 
 export type AvatarAssetType = "sprite" | "animated-webp" | "video" | "lottie";
+export type AvatarAnimationRole = "primary" | "variant";
 
-export type AvatarVariant = {
+export type AvatarAnimation = {
   id: string;
   src: string;
   type: AvatarAssetType;
+  role?: AvatarAnimationRole;
   durationMilliseconds?: number;
   intensity?: 0 | 1 | 2 | 3;
   loop?: boolean;
   weight?: number;
 };
 
-export type AvatarSlotConfig = {
-  primary: AvatarVariant;
-  variants?: AvatarVariant[];
-};
+export type AvatarVariant = AvatarAnimation;
+export type AvatarSlotConfig = AvatarAnimation[];
 
 export type AvatarPack = {
   id: string;
   name: string;
   version: string;
   species: string;
-  slots: Partial<Record<AnimationSlot, AvatarSlotConfig>>;
-  fallbacks: Partial<Record<AnimationSlot, AnimationSlot>>;
-  personality: {
-    tone: "gentle" | "direct" | "strict";
-    promptStyle: string;
-    backoffCopy: string;
-  };
+  animationSlots: Partial<Record<AnimationSlot, AvatarSlotConfig>>;
   thresholds: {
     maxIntensity: 0 | 1 | 2 | 3;
     proactiveMotionMinimumMilliseconds: number;
@@ -106,18 +100,10 @@ export type AvatarPack = {
   };
 };
 
-/** Returns the nearest pack slot with artwork by following fallback links. */
+/** Returns an exact pack slot with artwork, falling back only to idle. */
 export function resolveAvatarSlot(pack: AvatarPack, slot: AnimationSlot): AnimationSlot | undefined {
-  const visitedSlots = new Set<AnimationSlot>();
-  let currentSlot: AnimationSlot | undefined = slot;
-
-  while (currentSlot && !visitedSlots.has(currentSlot)) {
-    if (pack.slots[currentSlot]) return currentSlot;
-    visitedSlots.add(currentSlot);
-    currentSlot = pack.fallbacks[currentSlot];
-  }
-
-  return pack.slots.idle ? "idle" : undefined;
+  if (pack.animationSlots[slot]?.length) return slot;
+  return pack.animationSlots.idle?.length ? "idle" : undefined;
 }
 
 /** Returns the pack slot config for a requested animation slot. */
@@ -126,28 +112,29 @@ export function resolveAvatarSlotConfig(
   slot: AnimationSlot
 ): AvatarSlotConfig | undefined {
   const resolvedSlot = resolveAvatarSlot(pack, slot);
-  return resolvedSlot ? pack.slots[resolvedSlot] : undefined;
+  return resolvedSlot ? pack.animationSlots[resolvedSlot] : undefined;
 }
 
-/** Chooses a weighted variant from a slot config, keeping primary as the fallback. */
+/** Chooses a weighted animation from a slot list, using the primary animation as the default. */
 export function selectAvatarVariant(
   config: AvatarSlotConfig,
   rng: () => number = Math.random
 ): AvatarVariant {
-  const variants = [config.primary, ...(config.variants ?? [])];
-  const weightedVariants = variants.map((variant) => ({
+  const primary = config.find((animation) => animation.role === "primary") ?? config[0];
+  if (!primary) throw new Error("Avatar slot config must include at least one animation.");
+  const weightedVariants = config.map((variant) => ({
     variant,
     weight: Math.max(0, variant.weight ?? 1)
   }));
   const totalWeight = weightedVariants.reduce((total, item) => total + item.weight, 0);
-  if (totalWeight <= 0) return config.primary;
+  if (totalWeight <= 0) return primary;
 
   let cursor = rng() * totalWeight;
   for (const item of weightedVariants) {
     cursor -= item.weight;
     if (cursor <= 0) return item.variant;
   }
-  return config.primary;
+  return primary;
 }
 
 const ATTENTION_SLOT_PRIORITIES: readonly [
@@ -193,7 +180,7 @@ function resolvePetConsequenceSlot(
 ): AnimationSlot | undefined {
   if (state.petBehavior?.errorSoft) return "error_soft";
   if (state.petBehavior?.dismissedSettle) return "dismissed_settle";
-  if (state.petBehavior?.sitBackDown) return "sit_back_down";
+  if (state.petBehavior?.settle) return "settle";
   if (state.petBehavior?.backOff) return "back_off";
   if (state.petBehavior?.lowEnergy) return "low_energy_idle";
   return undefined;
@@ -202,7 +189,7 @@ function resolvePetConsequenceSlot(
 /** Resolves proactive intervention and cooldown slots. */
 function resolveProactiveSlot(state: Readonly<AnimationRuntimeState>): AnimationSlot | undefined {
   if (state.cooldown?.allProactive) return "quiet_idle";
-  if (state.intervention?.prompting) return "raise_paw";
+  if (state.intervention?.prompting) return "prompt";
   if (state.intervention?.queued) return "think";
   return undefined;
 }

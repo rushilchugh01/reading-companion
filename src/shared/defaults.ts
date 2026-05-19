@@ -1,4 +1,5 @@
 import type { CompanionSettings } from "./settings-types";
+import { createDefaultCompanionPackRegistry } from "./companion-pack-registry";
 
 /** Default settings preserve local-first privacy and OpenAI-compatible proxy support. */
 export function createDefaultSettings(): CompanionSettings {
@@ -23,6 +24,8 @@ export function createDefaultSettings(): CompanionSettings {
     },
     interventionFrequency: "medium",
     readGatingMode: "balanced",
+    companionPackId: "builtin-corgi",
+    companionPackRegistry: createDefaultCompanionPackRegistry(),
     personaId: "brutal-tutor-dog",
     avatarPackId: "builtin-corgi",
     strictness: "medium",

@@ -163,6 +163,7 @@ export function createInterventionComposePayload(input: ComposePayloadInput): In
       suggestedMoves: input.decision.opportunity.suggestedMoves
     },
     companionStyle: {
+      companionPackId: input.settings.companionPackId,
       personaId: input.settings.personaId,
       readGatingMode: input.settings.readGatingMode,
       strictness: input.settings.strictness
@@ -210,6 +211,7 @@ export function createChatSendPayload(input: ChatPayloadInput): ChatSendInput {
     },
     currentPassage: chunk ? passageFromChunk(chunk) : undefined,
     companionStyle: {
+      companionPackId: input.settings.companionPackId,
       personaId: input.settings.personaId,
       readGatingMode: input.settings.readGatingMode,
       strictness: input.settings.strictness

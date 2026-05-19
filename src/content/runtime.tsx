@@ -10,9 +10,9 @@ import {
   markModelStayedQuiet,
   markQuestionAsked
 } from "../intervention";
-import type { PetStateKey } from "../shared/companion-types";
+import type { PetStateKey } from "../shared/pet-state-types";
 import type { DebugEvent, DebugPolicySnapshot } from "../shared/debug-types";
-import type { ChatSendResult, InterventionComposeResult } from "../shared/intervention-types";
+import type { AnswerGradeInput, ChatSendResult, InterventionComposeResult } from "../shared/intervention-types";
 import type { RuntimeDebugModelJobsResult, RuntimeMessage } from "../shared/messages";
 import type { ModelQueueDebugSnapshot } from "../shared/model-job-types";
 import type { ParserSnapshot, ReadingChunk } from "../shared/reading-types";
@@ -104,6 +104,8 @@ export function ContentCompanionRuntime() {
       gradeResult={state.grade}
       conversationMessages={state.conversationMessages}
       greeting="hieee — I’ll stay quiet unless something worth checking shows up."
+      companionPackId={state.settings.companionPackId}
+      companionPackRegistry={state.settings.companionPackRegistry}
       avatarPackId={state.settings.avatarPackId}
       hidden={hiddenOnThisPage}
       initialPanelSize={settingsPanelSize(state.settings)}
@@ -514,7 +516,7 @@ async function requestAnswerGrade(
   try {
     return await requestBackground<GradeResult>({
       type: "answer:grade",
-      payload: { answer, chunkText: chunk.text, personaId: state.settings.personaId, session: state.session!, strictness: state.settings.strictness }
+      payload: createAnswerGradePayload(answer, chunk, state)
     });
   } catch (error) {
     const event = createDebugEvent("MODEL_REQUEST_FAILED", `Grading provider failed: ${errorMessage(error)}`);
@@ -529,6 +531,32 @@ async function requestAnswerGrade(
   } finally {
     await refreshModelDebug(setState);
   }
+}
+
+function createAnswerGradePayload(
+  answer: string,
+  chunk: ReadingChunk,
+  state: RuntimeState
+): AnswerGradeInput {
+  const session = state.session!;
+  return {
+    requestId: `grade-${Date.now()}-${session.id}`,
+    questionId: session.id,
+    attemptNumber: session.attemptCount,
+    question: session.question,
+    expectedAnswer: session.expectedPoint,
+    userAnswer: answer,
+    passage: {
+      chunkId: chunk.id,
+      heading: chunk.heading,
+      order: chunk.order,
+      preview: chunk.preview,
+      text: chunk.text
+    },
+    companionPackId: state.settings.companionPackId,
+    personaId: state.settings.personaId,
+    strictness: state.settings.strictness
+  };
 }
 
 async function savePosition(settings: CompanionSettings, position: PetPosition) {
