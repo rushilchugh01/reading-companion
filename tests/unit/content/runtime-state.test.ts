@@ -10,6 +10,7 @@ import { createDefaultSettings } from "../../../src/shared/defaults";
 import type { ParserSnapshot, ReadingChunk, ReadingSignals } from "../../../src/shared/reading-types";
 import type { PolicyDecision } from "../../../src/intervention";
 import type { InterventionComposeResult } from "../../../src/shared/intervention-types";
+import type { CompanionConversationMessage } from "../../../src/ui/types";
 
 const chunk = makeChunk();
 const settings = createDefaultSettings();
@@ -53,6 +54,7 @@ describe("content runtime-state compose payload", () => {
     expect(payload).toMatchObject({
       chunkId: "chunk-1",
       currentPassage: { chunkId: "chunk-1", heading: "Overview" },
+      questionGenerationStrategyId: "candidate_ranked_v1",
       policy: {
         allowedActions: ["ask_question", "offer_prediction", "offer_observation", "offer_help", "stay_quiet"],
         policyId: settings.interventionPolicy.policyId
@@ -60,6 +62,35 @@ describe("content runtime-state compose payload", () => {
     });
     expect(payload.pageId).toMatch(/^page_/);
     expect(payload.expiresAt).toBe(72_000);
+  });
+
+  it("adds bounded surrounding passage context around the selected chunk", () => {
+    const chunks = [
+      makeChunk({ id: "chunk-0", order: 0, text: "Previous setup", preview: "Previous setup", lastSeenAt: 8_000 }),
+      makeChunk({ id: "chunk-1", order: 1 }),
+      makeChunk({ id: "chunk-2", order: 2, text: "Next consequence", preview: "Next consequence" }),
+      makeChunk({ id: "chunk-3", order: 3, text: "Recent earlier idea", preview: "Recent earlier idea", lastSeenAt: 11_500 })
+    ];
+    const payload = createInterventionComposePayload({
+      chunks,
+      decision: allowedDecision(chunks[1]),
+      memory: {
+        askedChunkIds: [],
+        dismissalCount: 0,
+        questionsByPage: 0,
+        quietedChunkIds: []
+      },
+      page,
+      parser: { ...parser, chunks },
+      settings,
+      signals
+    });
+
+    expect(payload.surroundingPassages).toMatchObject({
+      previous: [{ chunkId: "chunk-0", text: "Previous setup" }],
+      next: [{ chunkId: "chunk-2", text: "Next consequence" }],
+      recent: [{ chunkId: "chunk-3", text: "Recent earlier idea" }]
+    });
   });
 
 });
@@ -71,6 +102,9 @@ describe("content runtime-state intervention mapping", () => {
       expectedAnswer: "The runtime should queue the next intervention.",
       id: "prediction-1",
       question: "What do you think happens next?",
+      questionDepth: "implication",
+      questionStrategyId: "candidate_ranked_v1",
+      targetIdea: "runtime queue ordering",
       style: "prediction"
     });
   });
@@ -105,6 +139,32 @@ describe("content runtime-state snapshots", () => {
     expect(machines.intervention.value).toBe("candidate");
     expect(machines.chatRoute).toBe("free_chat");
   });
+
+  it("does not treat completed chat history as an open chat", () => {
+    const snapshot = createCurrentRuntimeSnapshot({
+      activeChunkId: chunk.id,
+      chunks: [chunk],
+      conversationMessages: [conversationMessage("sent")],
+      now: 12_000,
+      page,
+      petState: "listening"
+    });
+
+    expect(snapshot.chatOpen).toBe(false);
+  });
+
+  it("keeps pending freeform chat closed to proactive interventions", () => {
+    const snapshot = createCurrentRuntimeSnapshot({
+      activeChunkId: chunk.id,
+      chunks: [chunk],
+      conversationMessages: [conversationMessage("pending")],
+      now: 12_000,
+      page,
+      petState: "thinking"
+    });
+
+    expect(snapshot.chatOpen).toBe(true);
+  });
 });
 
 describe("content runtime-state routing", () => {
@@ -122,11 +182,11 @@ describe("content runtime-state routing", () => {
   });
 });
 
-function allowedDecision(): Extract<PolicyDecision, { allowed: true }> {
+function allowedDecision(selectedChunk = chunk): Extract<PolicyDecision, { allowed: true }> {
   return {
     allowed: true,
     candidate: {
-      chunk,
+      chunk: selectedChunk,
       createdAt: 12_000,
       reason: "dense_pause",
       score: 0.9
@@ -149,28 +209,41 @@ function predictionResult(): InterventionComposeResult {
     expectedAnswer: "The runtime should queue the next intervention.",
     expiresAt: 70_000,
     petIntent: "curious",
+    questionDepth: "implication",
+    questionStrategyId: "candidate_ranked_v1",
     reasonForApp: "prediction is useful",
+    targetIdea: "runtime queue ordering",
     requestId: "prediction-1",
     userFacingText: "What do you think happens next?"
   };
 }
 
-function makeChunk(): ReadingChunk {
+function conversationMessage(status: CompanionConversationMessage["status"]): CompanionConversationMessage {
+  return {
+    id: `chat-${status}`,
+    role: "assistant",
+    content: [{ type: "text", text: "Chat reply" }],
+    status,
+    timestamp: 12_000
+  } as CompanionConversationMessage;
+}
+
+function makeChunk(overrides: Partial<ReadingChunk> & { lastSeenAt?: number } = {}): ReadingChunk {
   return {
     hash: "abc123",
-    heading: "Overview",
-    id: "chunk-1",
+    heading: overrides.heading ?? "Overview",
+    id: overrides.id ?? "chunk-1",
     kind: "paragraph",
     metrics: {
-      lastSeenAt: 11_000,
+      lastSeenAt: overrides.lastSeenAt ?? 11_000,
       revisitCount: 0,
       scrollVelocity: 0,
       selectionCount: 0,
       visibleMilliseconds: 9_000,
       visibleRatio: 1
     },
-    order: 0,
-    preview: "The runtime spine queues proactive intervention work.",
+    order: overrides.order ?? 0,
+    preview: overrides.preview ?? "The runtime spine queues proactive intervention work.",
     scores: {
       interventionReadiness: 0.9,
       meaningfulness: 0.9,
@@ -178,6 +251,6 @@ function makeChunk(): ReadingChunk {
     },
     selector: "p:nth-of-type(1)",
     state: "deep_read",
-    text: "The runtime spine queues proactive intervention work before applying validated results."
+    text: overrides.text ?? "The runtime spine queues proactive intervention work before applying validated results."
   };
 }

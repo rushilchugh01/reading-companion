@@ -47,6 +47,12 @@ export type InterventionPolicyId =
   | "gentle_checkpoints"
   | "brutal_tutor_dense";
 
+/** Built-in model-side question generation strategies. */
+export type QuestionGenerationStrategyId =
+  | "single_shot_v1"
+  | "candidate_ranked_v1"
+  | "sketch_then_rank_v1";
+
 /** User-tunable intervention policy thresholds. */
 export type InterventionPolicyOverrides = {
   pageLoadQuietMilliseconds?: number;
@@ -76,6 +82,7 @@ export type CompanionSettings = {
   hiddenSites: string[];
   placement: PetPlacement;
   interventionPolicy: InterventionPolicySettings;
+  questionGenerationStrategyId: QuestionGenerationStrategyId;
   interventionFrequency: "low" | "medium" | "high";
   readGatingMode: "strict" | "balanced" | "look_ahead";
   companionPackId: string;

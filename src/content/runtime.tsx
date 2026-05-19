@@ -546,6 +546,10 @@ function createAnswerGradePayload(
     chunkId: session.chunkId,
     question: session.question,
     expectedAnswer: session.expectedAnswer,
+    questionStrategyId: session.questionStrategyId,
+    questionDepth: session.questionDepth,
+    targetIdea: session.targetIdea,
+    reasoningNeeded: session.reasoningNeeded,
     userAnswer: answer,
     passage: {
       chunkId: chunk.id,

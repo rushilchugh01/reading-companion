@@ -4,6 +4,7 @@ import type { DebugSnapshot } from "@/shared/debug-types";
 import type { QuestionSession } from "@/shared/session-types";
 import type { CompanionPackManifest } from "@/shared/companion-pack-schema";
 import type { CompanionPackRegistry } from "@/shared/companion-pack-registry";
+import type { CompanionConversationMessage } from "@/ui/types";
 
 const debugSnapshot: DebugSnapshot = {
   activeAvatarPack: "fallback-dog",
@@ -109,6 +110,34 @@ const questionSession: QuestionSession = {
   question: "What caused this to happen?",
   style: "why_how"
 };
+
+function assistantConversationMessage(id: string, text: string): CompanionConversationMessage {
+  return {
+    id,
+    role: "assistant",
+    content: [{ type: "text", text }],
+    api: "openai-completions",
+    provider: "openai",
+    model: "test-model",
+    usage: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
+      cost: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        total: 0
+      }
+    },
+    stopReason: "stop",
+    status: "sent",
+    timestamp: 1
+  };
+}
 
 describe("CompanionPetApp", () => {
   it("keeps the companion pet visible", () => {
@@ -329,16 +358,56 @@ describe("CompanionPetApp home panel input actions", () => {
 });
 
 describe("CompanionPetApp question panel", () => {
-  it("opens the tool question panel when a question is active", () => {
+  it("opens the tool question panel when a question is active", async () => {
     render(<CompanionPetApp chatTheme="prediction-lilac" greeting="Hello reader" questionSession={questionSession} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Open reading companion" }));
-    expect(screen.getByRole("region", { name: "Companion tool panel" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Companion tool panel" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Reading companion panel" })).not.toBeInTheDocument();
     expect(screen.getByText("Hello reader")).toBeInTheDocument();
     expect(screen.getByText("What caused this to happen?")).toBeInTheDocument();
   });
 
+  it("auto-opens the question panel when a new question arrives", async () => {
+    const { rerender } = render(<CompanionPetApp greeting="Hello reader" />);
+
+    expect(screen.queryByRole("region", { name: "Companion tool panel" })).not.toBeInTheDocument();
+
+    rerender(<CompanionPetApp greeting="Hello reader" questionSession={questionSession} />);
+
+    expect(await screen.findByRole("region", { name: "Companion tool panel" })).toBeInTheDocument();
+    expect(screen.getByText("What caused this to happen?")).toBeInTheDocument();
+  });
+
+  it("auto-opens once per prompt so manual close stays closed", async () => {
+    const { rerender } = render(<CompanionPetApp greeting="Hello reader" />);
+
+    rerender(<CompanionPetApp greeting="Hello reader" questionSession={questionSession} />);
+    expect(await screen.findByRole("region", { name: "Companion tool panel" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close reading companion" }));
+    expect(screen.queryByRole("region", { name: "Companion tool panel" })).not.toBeInTheDocument();
+
+    rerender(<CompanionPetApp greeting="Hello reader" questionSession={questionSession} />);
+    expect(screen.queryByRole("region", { name: "Companion tool panel" })).not.toBeInTheDocument();
+  });
+
+  it("auto-opens for visible companion messages without a question session", async () => {
+    const { rerender } = render(<CompanionPetApp greeting="Hello reader" />);
+
+    rerender(
+      <CompanionPetApp
+        conversationMessages={[assistantConversationMessage("observation-1", "That paragraph is doing more work than it wants to admit.")]}
+        greeting="Hello reader"
+      />
+    );
+
+    expect(await screen.findByRole("region", { name: "Companion tool panel" })).toBeInTheDocument();
+    expect(screen.getByText("That paragraph is doing more work than it wants to admit.")).toBeInTheDocument();
+  });
+
+});
+
+describe("CompanionPetApp panel geometry", () => {
   it("attaches the panel beside the pet based on viewport position", () => {
     const { rerender } = render(<CompanionPetApp key="left-edge" />);
 
@@ -434,12 +503,11 @@ describe("CompanionPetApp active panel states", () => {
 });
 
 describe("CompanionPetApp answer panel states", () => {
-  it("submits and clears the answer input", () => {
+  it("submits and clears the answer input", async () => {
     const onAnswerSubmit = vi.fn();
     render(<CompanionPetApp questionSession={questionSession} onAnswerSubmit={onAnswerSubmit} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Open reading companion" }));
-    const input = screen.getByLabelText("Type a quick answer...");
+    const input = await screen.findByLabelText("Type a quick answer...");
     fireEvent.change(input, { target: { value: "Because the premise changed." } });
     fireEvent.click(screen.getByRole("button", { name: "Submit answer" }));
 
@@ -447,12 +515,11 @@ describe("CompanionPetApp answer panel states", () => {
     expect(input).toHaveValue("");
   });
 
-  it("submits and clears the answer input with Enter", () => {
+  it("submits and clears the answer input with Enter", async () => {
     const onAnswerSubmit = vi.fn();
     render(<CompanionPetApp questionSession={questionSession} onAnswerSubmit={onAnswerSubmit} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Open reading companion" }));
-    const input = screen.getByLabelText("Type a quick answer...");
+    const input = await screen.findByLabelText("Type a quick answer...");
     fireEvent.change(input, { target: { value: "Because the premise changed." } });
     const enter = createEvent.keyDown(input, { key: "Enter" });
     fireEvent(input, enter);
@@ -462,12 +529,11 @@ describe("CompanionPetApp answer panel states", () => {
     expect(input).toHaveValue("");
   });
 
-  it("keeps Shift+Enter available for multiline answers", () => {
+  it("keeps Shift+Enter available for multiline answers", async () => {
     const onAnswerSubmit = vi.fn();
     render(<CompanionPetApp questionSession={questionSession} onAnswerSubmit={onAnswerSubmit} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Open reading companion" }));
-    const input = screen.getByLabelText("Type a quick answer...");
+    const input = await screen.findByLabelText("Type a quick answer...");
     fireEvent.change(input, { target: { value: "Because the premise" } });
     const shiftEnter = createEvent.keyDown(input, { key: "Enter", shiftKey: true });
     fireEvent(input, shiftEnter);
@@ -480,7 +546,7 @@ describe("CompanionPetApp answer panel states", () => {
 });
 
 describe("CompanionPetApp answer panel feedback states", () => {
-  it("shows retry controls for answer feedback", () => {
+  it("shows retry controls for answer feedback", async () => {
     const onRetry = vi.fn();
     render(
       <CompanionPetApp
@@ -490,8 +556,7 @@ describe("CompanionPetApp answer panel feedback states", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Open reading companion" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Try once more with the central cause.");
+    expect(await screen.findByRole("status")).toHaveTextContent("Try once more with the central cause.");
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });

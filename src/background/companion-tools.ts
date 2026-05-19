@@ -1,5 +1,6 @@
 import type { Tool } from "@earendil-works/pi-ai";
-import type { InterventionAction, ObservationType, PetIntent } from "../shared/intervention-types";
+import type { InterventionAction, ObservationType, PetIntent, QuestionDepth } from "../shared/intervention-types";
+import type { QuestionGenerationStrategyId } from "../shared/settings-types";
 import type { GradeLabel } from "../shared/session-types";
 
 /** Names of companion actions the model may request through PI tools. */
@@ -20,6 +21,7 @@ export type CompanionToolCall = {
   arguments: Record<string, unknown>;
 };
 
+export type CompanionToolRoute = "intervention" | "grading" | "none";
 type JsonSchema = Tool["parameters"];
 
 const GRADE_LABELS: GradeLabel[] = [
@@ -52,12 +54,33 @@ const PET_INTENTS: PetIntent[] = [
   "explaining"
 ];
 
-/** Tools the model may request; deterministic app policy still approves final actions. */
-export function companionTools(): Tool[] {
+const QUESTION_STRATEGIES: QuestionGenerationStrategyId[] = [
+  "single_shot_v1",
+  "candidate_ranked_v1",
+  "sketch_then_rank_v1"
+];
+
+const QUESTION_DEPTHS: QuestionDepth[] = [
+  "recall",
+  "explain_why",
+  "hidden_assumption",
+  "evidence_check",
+  "connection",
+  "implication",
+  "transfer",
+  "self_explanation"
+];
+
+/** Intervention tools the model may request; deterministic app policy still approves final actions. */
+export function interventionTools(): Tool[] {
   return [
     companionTool("ask_question", "Ask one read-gated active-reading question.", {
       userFacingText: stringSchema(),
       expectedAnswer: stringSchema(),
+      questionStrategyId: enumSchema(QUESTION_STRATEGIES),
+      questionDepth: enumSchema(QUESTION_DEPTHS),
+      targetIdea: stringSchema(),
+      reasoningNeeded: stringSchema(),
       followupOptions: stringArraySchema(),
       petIntent: enumSchema(PET_INTENTS),
       reasonForApp: stringSchema(),
@@ -66,6 +89,10 @@ export function companionTools(): Tool[] {
     companionTool("offer_prediction", "Ask the reader to predict what comes next from seen context.", {
       userFacingText: stringSchema(),
       expectedAnswer: stringSchema(),
+      questionStrategyId: enumSchema(QUESTION_STRATEGIES),
+      questionDepth: enumSchema(QUESTION_DEPTHS),
+      targetIdea: stringSchema(),
+      reasoningNeeded: stringSchema(),
       followupOptions: stringArraySchema(),
       petIntent: enumSchema(PET_INTENTS),
       reasonForApp: stringSchema(),
@@ -90,7 +117,13 @@ export function companionTools(): Tool[] {
       petIntent: enumSchema(PET_INTENTS),
       reasonForApp: stringSchema(),
       confidence: numberSchema()
-    }, ["petIntent", "reasonForApp", "confidence"]),
+    }, ["petIntent", "reasonForApp", "confidence"])
+  ];
+}
+
+/** Grading tools the model may request for answer evaluation. */
+export function gradingTools(): Tool[] {
+  return [
     companionTool("grade_answer", "Grade a user's answer with medium-strict active-reading labels.", {
       label: enumSchema(GRADE_LABELS),
       feedback: stringSchema(),
@@ -99,6 +132,13 @@ export function companionTools(): Tool[] {
       shouldRetry: booleanSchema()
     }, ["label", "feedback", "shouldRetry"])
   ];
+}
+
+/** Returns the exact tool catalogue for one model route. */
+export function companionToolsForRoute(route: CompanionToolRoute): Tool[] | undefined {
+  if (route === "intervention") return interventionTools();
+  if (route === "grading") return gradingTools();
+  return undefined;
 }
 
 /** Convert PI tool-call content into app-level companion calls. */

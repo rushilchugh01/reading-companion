@@ -23,6 +23,7 @@ import {
   type QuestionGrade
 } from "./state/question-session";
 import { routeChatSubmit, type ChatSubmitRoute } from "./state/chat";
+import { surroundingPassagesFromChunks } from "./passage-context";
 
 export * from "./policy";
 export * from "./state";
@@ -116,7 +117,7 @@ export function createCurrentRuntimeSnapshot(input: SnapshotInput): CurrentRunti
   return {
     activeChunkId,
     answerSession,
-    chatOpen: input.conversationMessages.length > 0 && !input.session,
+    chatOpen: hasPendingFreeformChat(input),
     chunkId: activeChunkId,
     contentHash: identity.contentHash,
     conversationId: input.session?.id,
@@ -126,6 +127,11 @@ export function createCurrentRuntimeSnapshot(input: SnapshotInput): CurrentRunti
     questionSession: answerSession,
     tabId: DEFAULT_TAB_ID
   };
+}
+
+/** Returns true only while a freeform chat request is still in flight. */
+function hasPendingFreeformChat(input: SnapshotInput): boolean {
+  return !input.session && input.conversationMessages.some((message) => message.status === "pending");
 }
 
 /** Creates the normalized intervention compose payload for proactive model work. */
@@ -147,6 +153,7 @@ export function createInterventionComposePayload(input: ComposePayloadInput): In
       url: input.page.url
     },
     currentPassage: passageFromChunk(chunk),
+    surroundingPassages: surroundingPassagesFromChunks(input.chunks, chunk),
     readerState: {
       answeredQuestionIds: input.memory.askedChunkIds,
       currentChunk: chunk,
@@ -168,6 +175,7 @@ export function createInterventionComposePayload(input: ComposePayloadInput): In
       readGatingMode: input.settings.readGatingMode,
       strictness: input.settings.strictness
     },
+    questionGenerationStrategyId: input.settings.questionGenerationStrategyId,
     history: interventionHistory(input.memory),
     expiresAt: now + INTERVENTION_TTL_MS
   };
@@ -188,6 +196,10 @@ export function questionSessionFromIntervention(
     question: result.userFacingText,
     style: result.action === "offer_prediction" ? "prediction" : questionStyleFor(settings.readGatingMode),
     expectedAnswer: result.expectedAnswer,
+    questionStrategyId: result.questionStrategyId,
+    questionDepth: result.questionDepth,
+    targetIdea: result.targetIdea,
+    reasoningNeeded: result.reasoningNeeded,
     attemptCount: 0,
     createdAt: now
   };

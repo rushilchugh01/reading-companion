@@ -142,10 +142,13 @@ async function runProactiveQuestionAndGrading(page: Page, options: Page, anomali
   await writeBehaviorSettings(options, cliproxy, { suppressFirstInterrupt: false });
   await page.bringToFront();
   await closePanelIfOpen(page);
+  const proactiveStartedAt = Date.now();
   await simulateReading(page, { passes: 5, settleMs: 4_000 });
 
   const intervention = await waitForModelCall(options, (call) => (
-    call.kind === "intervention_compose" && call.status === "completed"
+    call.kind === "intervention_compose"
+    && call.status === "completed"
+    && (call.completedAt ?? call.createdAt ?? 0) >= proactiveStartedAt
   ), 120_000);
   if (intervention?.providerAction !== "ask_question") {
     anomalies.push(`Expected proactive interrupt to become ask_question, saw ${intervention?.providerAction ?? "no action"}.`);
@@ -331,6 +334,8 @@ type CliproxySettings = {
 };
 
 type ModelCallSnapshot = {
+  completedAt?: number;
+  createdAt?: number;
   error?: string;
   kind: string;
   providerAction?: string;

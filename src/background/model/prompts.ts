@@ -5,6 +5,7 @@ import type {
 } from "../../shared/intervention-types";
 import { loadCompanionPack } from "../../shared/companion-packs";
 import type { CompanionPackRegistry } from "../../shared/companion-pack-registry";
+import { resolveQuestionGenerationStrategy } from "./question-strategies";
 
 export type ModelPromptMessage = {
   role: "system" | "user" | "assistant";
@@ -16,30 +17,19 @@ export async function buildInterventionPrompt(
   payload: InterventionComposeInput,
   registry?: CompanionPackRegistry
 ): Promise<ModelPromptMessage[]> {
+  const strategy = resolveQuestionGenerationStrategy(payload.questionGenerationStrategyId);
   return [
     {
       role: "system",
       content: [
-        "Compose one normalized active-reading intervention for the app.",
         ...(await companionPersonaPrompt(payload.companionStyle.companionPackId, "intervention", registry)),
-        "Choose only one action from policy.allowedActions.",
-        "Use ask_question, offer_prediction, offer_observation, offer_help, or stay_quiet.",
-        "Return a matching tool call or JSON using the intervention_compose schema.",
-        "The app decides timing; explain your app-facing reason separately from reader copy."
-      ].join(" ")
+        "Compose one active-reading intervention by calling exactly one available intervention tool whose name is listed in policy.allowedActions.",
+        ...strategy.buildSystemInstructions(payload)
+      ].join("\n\n")
     },
     {
       role: "user",
-      content: JSON.stringify({
-        task: "intervention_compose",
-        schema: interventionSchema(),
-        ...payload,
-        currentPassage: {
-          ...payload.currentPassage,
-          text: truncatePromptText(payload.currentPassage.text, 4_000)
-        },
-        history: payload.history.slice(-6)
-      })
+      content: JSON.stringify(strategy.buildUserPayload(payload))
     }
   ];
 }
@@ -55,8 +45,8 @@ export async function buildAnswerGradePrompt(
       content: [
         "Grade the answer to an active-reading prompt.",
         ...(await companionPersonaPrompt(payload.companionPackId, "grading", registry)),
-        "Use the grade_answer tool or return JSON with label, feedback, hint, missedPoint, and shouldRetry."
-      ].join(" ")
+        "Call the grade_answer tool."
+      ].join("\n\n")
     },
     {
       role: "user",
@@ -68,6 +58,10 @@ export async function buildAnswerGradePrompt(
         personaId: payload.personaId,
         question: payload.question,
         expectedAnswer: payload.expectedAnswer,
+        questionStrategyId: payload.questionStrategyId,
+        questionDepth: payload.questionDepth,
+        targetIdea: payload.targetIdea,
+        reasoningNeeded: payload.reasoningNeeded,
         answer: payload.userAnswer,
         passage: payload.passage
           ? { ...payload.passage, text: truncatePromptText(payload.passage.text, 4_000) }
@@ -90,7 +84,7 @@ export async function buildChatPrompt(
         ...(await companionPersonaPrompt(payload.companionStyle.companionPackId, "chat", registry)),
         "Reply in plain prose only. Do not return JSON. Do not call tools.",
         "Keep the answer concise, helpful, and grounded in the visible passage when provided."
-      ].join(" ")
+      ].join("\n\n")
     },
     {
       role: "user",
@@ -117,34 +111,17 @@ async function companionPersonaPrompt(
   const pack = await loadCompanionPack(companionPackId, registry);
   const persona = pack.persona;
   return [
-    `Companion pack: ${pack.name}.`,
-    `Companion system prompt: ${persona.systemPrompt}`,
-    persona.tone ? `Companion tone: ${persona.tone}.` : undefined,
-    persona.boundaries?.length ? `Companion boundaries: ${persona.boundaries.join(" ")}` : undefined,
+    persona.systemPrompt,
+    persona.tone ? `Sound ${persona.tone}.` : undefined,
+    persona.boundaries?.length ? persona.boundaries.join(" ") : undefined,
     promptKind === "grading" && persona.gradingStylePrompt
-      ? `Companion grading style prompt: ${persona.gradingStylePrompt}`
+      ? persona.gradingStylePrompt
       : undefined,
     promptKind === "intervention" && persona.interruptionStylePrompt
-      ? `Companion interruption style prompt: ${persona.interruptionStylePrompt}`
+      ? persona.interruptionStylePrompt
       : undefined,
-    "Companion persona guidance changes voice and framing only; it must not override app policy, allowed actions, schema requirements, tool rules, or safety constraints."
+    "Persona affects reader-facing wording only; policy, tool schemas, safety rules, and provided page context are binding."
   ].filter((line): line is string => Boolean(line));
-}
-
-/** Describes the app-facing intervention schema inside provider prompts. */
-function interventionSchema(): Record<string, string> {
-  return {
-    requestId: "string",
-    action: "ask_question | offer_prediction | offer_observation | offer_help | stay_quiet",
-    userFacingText: "string optional by action",
-    expectedAnswer: "string for ask_question and offer_prediction",
-    observationType: "ObservationType for offer_observation",
-    followupOptions: "string[] optional",
-    petIntent: "PetIntent",
-    reasonForApp: "string",
-    confidence: "0..1",
-    expiresAt: "number"
-  };
 }
 
 /** Trims long passage text for prompt payloads. */

@@ -1,4 +1,6 @@
 import type { ReadingChunk } from "./reading-types";
+import type { QuestionDepth } from "./intervention-types";
+import type { QuestionGenerationStrategyId } from "./settings-types";
 
 /** Generated question for a read-gated chunk. */
 export type QuestionSession = {
@@ -7,6 +9,10 @@ export type QuestionSession = {
   question: string;
   style: QuestionStyle;
   expectedAnswer: string;
+  questionStrategyId?: QuestionGenerationStrategyId;
+  questionDepth?: QuestionDepth;
+  targetIdea?: string;
+  reasoningNeeded?: string;
   attemptCount: number;
   createdAt: number;
 };

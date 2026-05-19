@@ -55,6 +55,7 @@ function interventionInput(): InterventionComposeInput {
       allowedActions: ["ask_question"]
     },
     companionStyle: { companionPackId: "builtin-corgi", personaId: "brutal-tutor-dog" },
+    questionGenerationStrategyId: "single_shot_v1",
     history: [],
     expiresAt: Date.now() + 20_000
   };
@@ -95,15 +96,17 @@ describe("RuntimeMessageRouter model queue boundary", () => {
 
   it("validates normalized intervention results against the latest runtime snapshot", async () => {
     const router = createRouter(() => Promise.resolve({
-      text: JSON.stringify({
-        action: "ask_question",
-        userFacingText: "What changed here?",
-        expectedAnswer: "The retrieval condition changed.",
-        petIntent: "curious",
-        reasonForApp: "High-value paragraph.",
-        confidence: 0.9
-      }),
-      toolCalls: []
+      text: "",
+      toolCalls: [{
+        name: "ask_question",
+        arguments: {
+          userFacingText: "What changed here?",
+          expectedAnswer: "The retrieval condition changed.",
+          petIntent: "curious",
+          reasonForApp: "High-value paragraph.",
+          confidence: 0.9
+        }
+      }]
     }));
 
     await router.route({
@@ -168,15 +171,17 @@ describe("RuntimeMessageRouter debug model snapshot", () => {
 describe("RuntimeMessageRouter model-call audit", () => {
   it("audits model result actions and stale validation decisions", async () => {
     const router = createRouter(() => Promise.resolve({
-      text: JSON.stringify({
-        action: "ask_question",
-        userFacingText: "What changed here?",
-        expectedAnswer: "The retrieval condition changed.",
-        petIntent: "curious",
-        reasonForApp: "High-value paragraph.",
-        confidence: 0.9
-      }),
-      toolCalls: []
+      text: "",
+      toolCalls: [{
+        name: "ask_question",
+        arguments: {
+          userFacingText: "What changed here?",
+          expectedAnswer: "The retrieval condition changed.",
+          petIntent: "curious",
+          reasonForApp: "High-value paragraph.",
+          confidence: 0.9
+        }
+      }]
     }));
 
     await router.route({

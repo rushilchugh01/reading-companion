@@ -1,6 +1,6 @@
 {
   "name": "reading-companion",
-  "version": "0.119.0",
+  "version": "0.164.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "test:e2e:cliproxy": "playwright test tests/e2e/cliproxy-gemini-smoke.spec.ts",
     "test:e2e:long": "playwright test tests/e2e/full-state-machine-long.spec.ts --workers=2",
+    "eval:question-strategies": "node scripts/evaluate-question-strategies.mjs",
     "check:size": "node scripts/check-size.mjs",
     "check": "npm run typecheck && npm run lint && npm run check:size && npm run test && npm run build"
   },

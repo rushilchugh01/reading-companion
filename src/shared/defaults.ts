@@ -28,6 +28,7 @@ export function createDefaultSettings(): CompanionSettings {
       policyId: "ambient_active_reading_v1",
       overrides: {}
     },
+    questionGenerationStrategyId: "candidate_ranked_v1",
     interventionFrequency: "medium",
     readGatingMode: "balanced",
     companionPackId: "builtin-corgi",
@@ -40,7 +41,7 @@ export function createDefaultSettings(): CompanionSettings {
       providerId: "custom",
       baseUrl: "http://127.0.0.1:8318/v1",
       apiKey: defaultProviderApiKey(),
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-pro-preview",
       providerName: "OpenAI Compatible",
       reasoningLevel: "medium",
       azureApiVersion: "2025-04-01-preview",

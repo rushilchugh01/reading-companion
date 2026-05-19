@@ -24,6 +24,8 @@ export function mergeSettingsWithDefaults(saved: unknown): CompanionSettings {
   return {
     ...defaults,
     ...saved,
+    questionGenerationStrategyId: questionStrategyValue(saved.questionGenerationStrategyId)
+      ?? defaults.questionGenerationStrategyId,
     companionPackId: companionPackRegistry.activePackId,
     companionPackRegistry,
     avatarPackId: stringValue(saved.avatarPackId) ?? companionPackRegistry.activePackId,
@@ -51,4 +53,10 @@ export function mergeSettingsWithDefaults(saved: unknown): CompanionSettings {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function questionStrategyValue(value: unknown): CompanionSettings["questionGenerationStrategyId"] | undefined {
+  return value === "single_shot_v1" || value === "candidate_ranked_v1" || value === "sketch_then_rank_v1"
+    ? value
+    : undefined;
 }

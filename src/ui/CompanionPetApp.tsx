@@ -111,9 +111,8 @@ export function CompanionPetApp(props: CompanionPetAppProps) {
   useEffect(() => bindWindowMotion({ dragRef, resizeRef, setPanelSize, setPosition, onPanelSizeChange: props.onPanelSizeChange, onPositionChange: props.onPositionChange }), [props.onPanelSizeChange, props.onPositionChange]);
   useEffect(() => bindViewportClamp(setPosition, setPanelSize), []);
   useEffect(() => bindOutsidePanelClose(rootRef, open, setOpen), [open]);
-  useEffect(() => {
-    if (props.hidden) setOpen(false);
-  }, [props.hidden]);
+  useAutoOpenActivePrompt(props, setOpen);
+  useCloseWhenHidden(props.hidden, setOpen);
 
   function startDrag(event: React.MouseEvent<HTMLButtonElement>) { dragRef.current = { active: true, offsetX: event.clientX - position.x, offsetY: event.clientY - position.y }; }
 
@@ -231,6 +230,36 @@ function getCompanionViewAppProps(props: CompanionPetAppProps): CompanionPetAppP
     questionSession: props.questionSession,
     retryDisplay: props.retryDisplay
   };
+}
+
+function useAutoOpenActivePrompt(
+  props: CompanionPetAppProps,
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>
+): void {
+  const autoOpenedPromptRef = useRef<string | undefined>(undefined);
+  const activePromptKey = activePanelPromptKey(props);
+  useEffect(() => {
+    if (props.hidden || !activePromptKey || autoOpenedPromptRef.current === activePromptKey) return;
+    autoOpenedPromptRef.current = activePromptKey;
+    setOpen(true);
+  }, [activePromptKey, props.hidden, setOpen]);
+}
+
+function useCloseWhenHidden(
+  hidden: boolean | undefined,
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>
+): void {
+  useEffect(() => {
+    if (hidden) setOpen(false);
+  }, [hidden, setOpen]);
+}
+
+function activePanelPromptKey(props: CompanionPetAppProps): string | undefined {
+  if (props.questionSession) return `question:${props.questionSession.id}:${props.questionSession.attemptCount}`;
+  const messages = props.conversationMessages;
+  if (!messages?.length) return undefined;
+  const latestMessage = messages[messages.length - 1];
+  return `conversation:${latestMessage?.id ?? messages.length}`;
 }
 
 function CompanionView(props: CompanionViewProps) {

@@ -98,7 +98,7 @@ export default tseslint.config(
     },
     rules: {
       "complexity": ["error", 12],
-      "max-lines": ["error", { max: 600, skipBlankLines: true, skipComments: true }],
+      "max-lines": ["error", { max: 400, skipBlankLines: true, skipComments: true }],
       "max-lines-per-function": ["error", { max: 60, skipBlankLines: true, skipComments: true }],
       "max-params": ["error", 4],
       "jsdoc/require-jsdoc": publicFunctionDocumentationRule,

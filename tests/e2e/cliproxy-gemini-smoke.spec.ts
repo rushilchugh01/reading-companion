@@ -36,7 +36,7 @@ test.describe("Cliproxy Gemini live smoke", () => {
           apiKey: cliproxy.apiKey,
           baseUrl: cliproxy.baseUrl,
           maxTokens: 80,
-          model: "gemini-3-flash-preview",
+          model: "gemini-3.1-pro-preview",
           providerId: "custom",
           providerName: "Cliproxy Local",
           temperature: 0,

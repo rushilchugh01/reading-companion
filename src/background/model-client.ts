@@ -12,9 +12,9 @@ import type {
 } from "../shared/intervention-types";
 import { createCompanionLogger } from "../shared/logger";
 import type { CompanionSettings } from "../shared/settings-types";
+import { interventionTools } from "./companion-tools";
 import {
   normalizeGradeResult,
-  normalizeInterventionResult
 } from "./model/result-normalizer";
 import {
   buildAnswerGradePrompt,
@@ -22,6 +22,7 @@ import {
   buildInterventionPrompt,
   type ModelPromptMessage
 } from "./model/prompts";
+import { resolveQuestionGenerationStrategy } from "./model/question-strategies";
 import { runPiModelRequest, type PiModelResult } from "./pi-model-provider";
 
 type PiRunner = typeof runPiModelRequest;
@@ -31,7 +32,6 @@ type ChatCompletionRequest = {
   messages: ModelPromptMessage[];
   temperature: number;
   max_tokens: number;
-  response_format?: { type: "json_object" };
   tools?: Array<{ type: "function"; function: { name: string } }>;
 };
 
@@ -61,25 +61,20 @@ export class ModelClient {
     this.piRunner = options.piRunner ?? runPiModelRequest;
   }
 
-  /** Builds the JSON-mode request shape for config/debug tests. */
+  /** Builds the OpenAI-compatible request shape for config/debug tests. */
   public buildChatRequest(
     provider: CompanionSettings["provider"],
     messages: ModelPromptMessage[]
   ): RequestBuild {
-    const tools = [
-      { type: "function" as const, function: { name: "ask_question" } },
-      { type: "function" as const, function: { name: "grade_answer" } },
-      { type: "function" as const, function: { name: "offer_prediction" } },
-      { type: "function" as const, function: { name: "offer_observation" } },
-      { type: "function" as const, function: { name: "offer_help" } },
-      { type: "function" as const, function: { name: "stay_quiet" } }
-    ];
+    const tools = interventionTools().map((tool) => ({
+      type: "function" as const,
+      function: { name: tool.name }
+    }));
     const body = {
       model: provider.model,
       messages,
       temperature: provider.temperature,
       max_tokens: provider.maxTokens,
-      response_format: { type: "json_object" as const },
       tools
     };
     return {
@@ -102,8 +97,15 @@ export class ModelClient {
     settings: CompanionSettings
   ): Promise<InterventionComposeResult> {
     try {
-      const result = await this.runPrompt(settings, await buildInterventionPrompt(payload, settings.companionPackRegistry));
-      return normalizeInterventionResult(result, payload);
+      const result = await this.runPrompt(
+        settings,
+        await buildInterventionPrompt(payload, settings.companionPackRegistry),
+        { tools: "intervention" }
+      );
+      const strategy = resolveQuestionGenerationStrategy(payload.questionGenerationStrategyId);
+      const normalized = strategy.normalizeResult(result, payload);
+      strategy.validateResult(normalized, payload);
+      return normalized;
     } catch (error) {
       modelLogger.warn("intervention provider request failed", { error: errorMessage(error) });
       throw providerRequestError(error);
@@ -117,7 +119,7 @@ export class ModelClient {
   ): Promise<AnswerGradeResult> {
     try {
       const messages = await buildAnswerGradePrompt(payload, settings.companionPackRegistry);
-      const result = await this.runPrompt(settings, messages);
+      const result = await this.runPrompt(settings, messages, { tools: "grading" });
       return this.gradeFromModelResult(result, payload.requestId);
     } catch (error) {
       modelLogger.warn("grading provider request failed", { error: errorMessage(error) });
@@ -171,7 +173,7 @@ export class ModelClient {
   private async runPrompt(
     settings: CompanionSettings,
     messages: ModelPromptMessage[],
-    options: { responseFormat?: "json" | "text"; tools?: "companion" | "none" } = {}
+    options: Pick<Parameters<PiRunner>[0], "responseFormat" | "tools"> = {}
   ): Promise<PiModelResult> {
     return this.piRunner({
       settings,

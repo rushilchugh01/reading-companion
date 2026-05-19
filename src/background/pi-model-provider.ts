@@ -1,6 +1,6 @@
 import { getModels, stream } from "@earendil-works/pi-ai";
 import type { Api, AssistantMessage, Context, Model, OpenAICompletionsCompat, ProviderResponse, ProviderStreamOptions } from "@earendil-works/pi-ai";
-import { companionTools, normalizeToolCalls, type CompanionToolCall } from "./companion-tools";
+import { companionToolsForRoute, normalizeToolCalls, type CompanionToolCall, type CompanionToolRoute } from "./companion-tools";
 import { createCompanionLogger } from "../shared/logger";
 import { providerCatalogEntry, type ModelProviderApi, type ModelProviderId } from "../shared/provider-catalog";
 import type { CompanionSettings, ModelReasoningLevel } from "../shared/settings-types";
@@ -10,8 +10,8 @@ export type PiRequest = {
   settings: CompanionSettings;
   systemPrompt: string;
   userPrompt: string;
-  responseFormat?: "json" | "text";
-  tools?: "companion" | "none";
+  responseFormat?: "text";
+  tools?: CompanionToolRoute;
 };
 
 /** Provider response distilled into text, tool calls, and debug metadata. */
@@ -34,7 +34,7 @@ export async function runPiModelRequest(request: PiRequest): Promise<PiModelResu
   const messageStream = stream(
     model,
     createContext(request),
-    createStreamOptions(request.settings, model.api, request.responseFormat, (response) => {
+    createStreamOptions(request, model.api, (response) => {
       status = response.status;
     })
   );
@@ -44,32 +44,40 @@ export async function runPiModelRequest(request: PiRequest): Promise<PiModelResu
 }
 
 function createStreamOptions(
-  settings: CompanionSettings,
+  request: PiRequest,
   api: Api,
-  responseFormat: PiRequest["responseFormat"],
   onResponse: (response: ProviderResponse) => void
 ): ProviderStreamOptions {
   return {
-    apiKey: providerApiKey(settings),
-    maxTokens: settings.provider.maxTokens,
-    temperature: settings.provider.temperature,
-    timeoutMs: settings.provider.timeout,
-    toolChoice: "auto",
-    reasoning: streamReasoningLevel(settings.provider.reasoningLevel),
-    azureApiVersion: settings.provider.azureApiVersion || undefined,
-    azureDeploymentName: settings.provider.azureDeploymentName || undefined,
-    azureResourceName: settings.provider.azureResourceName || undefined,
-    bearerToken: settings.provider.bedrockBearerToken || undefined,
-    headers: providerHeaders(settings),
-    location: settings.provider.googleVertexLocation || undefined,
-    profile: settings.provider.bedrockProfile || undefined,
-    project: settings.provider.googleVertexProject || undefined,
-    region: settings.provider.bedrockRegion || undefined,
-    onPayload: api === "openai-completions" && responseFormat !== "text"
-      ? enforceJsonPayload
-      : undefined,
+    apiKey: providerApiKey(request.settings),
+    maxTokens: request.settings.provider.maxTokens,
+    temperature: request.settings.provider.temperature,
+    timeoutMs: request.settings.provider.timeout,
+    toolChoice: toolChoiceForRoute(api, request.tools),
+    reasoning: streamReasoningLevel(request.settings.provider.reasoningLevel),
+    azureApiVersion: request.settings.provider.azureApiVersion || undefined,
+    azureDeploymentName: request.settings.provider.azureDeploymentName || undefined,
+    azureResourceName: request.settings.provider.azureResourceName || undefined,
+    bearerToken: request.settings.provider.bedrockBearerToken || undefined,
+    headers: providerHeaders(request.settings),
+    location: request.settings.provider.googleVertexLocation || undefined,
+    profile: request.settings.provider.bedrockProfile || undefined,
+    project: request.settings.provider.googleVertexProject || undefined,
+    region: request.settings.provider.bedrockRegion || undefined,
     onResponse
   };
+}
+
+function toolChoiceForRoute(api: Api, route: CompanionToolRoute | undefined): string | undefined {
+  if (route === undefined || route === "none") return undefined;
+  return usesRequiredToolChoice(api) ? "required" : "any";
+}
+
+function usesRequiredToolChoice(api: Api): boolean {
+  return api === "openai-completions"
+    || api === "mistral-conversations"
+    || api === "azure-openai-responses"
+    || api === "openai-codex-responses";
 }
 
 function providerApiKey(settings: CompanionSettings): string {
@@ -82,15 +90,6 @@ function providerHeaders(settings: CompanionSettings): ProviderStreamOptions["he
   }
 
   return undefined;
-}
-
-/** Enforces JSON response formatting while preserving the provider's tool payload. */
-export function enforceJsonPayload(payload: unknown): unknown {
-  if (!isPlainRecord(payload)) return payload;
-  return {
-    ...payload,
-    response_format: { type: "json_object" }
-  };
 }
 
 /** Creates a PI model from user-configured provider settings. */
@@ -122,7 +121,7 @@ function createContext(request: PiRequest): Context {
       content: request.userPrompt,
       timestamp: Date.now()
     }],
-    tools: request.tools === "none" ? undefined : companionTools()
+    tools: companionToolsForRoute(request.tools ?? "intervention")
   };
 }
 
@@ -203,10 +202,6 @@ function createCustomModel(
       }
       : undefined
   };
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** PI provider response type re-exported for tests and future diagnostics. */

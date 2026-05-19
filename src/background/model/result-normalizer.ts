@@ -4,9 +4,11 @@ import type {
   InterventionComposeInput,
   InterventionComposeResult,
   ObservationType,
-  PetIntent
+  PetIntent,
+  QuestionDepth
 } from "../../shared/intervention-types";
 import type { GradeLabel } from "../../shared/session-types";
+import type { QuestionGenerationStrategyId } from "../../shared/settings-types";
 import type { PiModelResult } from "../pi-model-provider";
 
 const INTERVENTION_ACTIONS = new Set<InterventionAction>([
@@ -47,15 +49,36 @@ const GRADE_LABELS = new Set<GradeLabel>([
   "missed_key_point"
 ]);
 
-/** Normalizes provider text or tool calls into an app-level intervention result. */
+const QUESTION_STRATEGIES = new Set<QuestionGenerationStrategyId>([
+  "single_shot_v1",
+  "candidate_ranked_v1",
+  "sketch_then_rank_v1"
+]);
+
+const QUESTION_DEPTHS = new Set<QuestionDepth>([
+  "recall",
+  "explain_why",
+  "hidden_assumption",
+  "evidence_check",
+  "connection",
+  "implication",
+  "transfer",
+  "self_explanation"
+]);
+
+/** Normalizes provider tool calls into an app-level intervention result. */
 export function normalizeInterventionResult(
   result: PiModelResult,
   input: InterventionComposeInput
 ): InterventionComposeResult {
   const toolCall = result.toolCalls.find((call) => INTERVENTION_ACTIONS.has(call.name as InterventionAction));
-  const record = toolCall
-    ? { ...toolCall.arguments, action: toolCall.name }
-    : recordFromText(result.text);
+  if (!toolCall) {
+    if (result.toolCalls.length > 0) {
+      throw new Error("Provider returned a non-intervention tool call.");
+    }
+    throw new Error("Provider did not return a required intervention tool call.");
+  }
+  const record = { ...toolCall.arguments, action: toolCall.name };
   return normalizeInterventionRecord(record, input);
 }
 
@@ -70,6 +93,10 @@ export function normalizeInterventionRecord(
     action,
     userFacingText: optionalStringField(record, "userFacingText"),
     expectedAnswer: optionalStringField(record, "expectedAnswer"),
+    questionStrategyId: questionStrategyField(record),
+    questionDepth: questionDepthField(record),
+    targetIdea: optionalStringField(record, "targetIdea"),
+    reasoningNeeded: optionalStringField(record, "reasoningNeeded"),
     observationType: observationTypeField(record),
     followupOptions: stringArrayField(record, "followupOptions"),
     petIntent: petIntentField(record, action),
@@ -101,10 +128,16 @@ export function validateInterventionResult(result: InterventionComposeResult): v
   }
 }
 
-/** Normalizes grade tool calls or JSON text into the public grade result. */
+/** Normalizes grade tool calls into the public grade result. */
 export function normalizeGradeResult(result: PiModelResult, requestId?: string): AnswerGradeResult {
   const gradeAnswer = result.toolCalls.find((toolCall) => toolCall.name === "grade_answer");
-  const record = gradeAnswer?.arguments ?? recordFromText(result.text);
+  if (!gradeAnswer) {
+    if (result.toolCalls.length > 0) {
+      throw new Error("Provider returned a non-grading tool call.");
+    }
+    throw new Error("Provider did not return a required grading tool call.");
+  }
+  const record = gradeAnswer.arguments;
   const label = gradeLabelField(record);
   const feedback = stringField(record, "feedback");
   if (!label || !feedback) {
@@ -118,23 +151,6 @@ export function normalizeGradeResult(result: PiModelResult, requestId?: string):
     missedPoint: optionalStringField(record, "missedPoint"),
     shouldRetry: booleanField(record, "shouldRetry")
   };
-}
-
-/** Parses provider text as a single JSON object. */
-export function recordFromText(text: string): Record<string, unknown> {
-  if (!text) return {};
-  const parsed = JSON.parse(jsonTextFromProviderText(text)) as unknown;
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    throw new Error("Model returned non-object JSON.");
-  }
-  return parsed as Record<string, unknown>;
-}
-
-/** Removes common Markdown JSON fences from provider text responses. */
-function jsonTextFromProviderText(text: string): string {
-  const trimmed = text.trim();
-  const fenced = /^```(?:json|JSON)?\s*([\s\S]*?)\s*```$/.exec(trimmed);
-  return fenced?.[1]?.trim() ?? trimmed;
 }
 
 /** Reads a non-empty string field from a provider record. */
@@ -159,6 +175,20 @@ function actionField(record: Record<string, unknown>): InterventionAction {
 function observationTypeField(record: Record<string, unknown>): ObservationType | undefined {
   const value = record.observationType;
   return OBSERVATION_TYPES.has(value as ObservationType) ? (value as ObservationType) : undefined;
+}
+
+/** Reads a valid strategy id when the provider includes one. */
+function questionStrategyField(record: Record<string, unknown>): QuestionGenerationStrategyId | undefined {
+  const value = record.questionStrategyId;
+  return QUESTION_STRATEGIES.has(value as QuestionGenerationStrategyId)
+    ? (value as QuestionGenerationStrategyId)
+    : undefined;
+}
+
+/** Reads a valid question depth when the provider includes one. */
+function questionDepthField(record: Record<string, unknown>): QuestionDepth | undefined {
+  const value = record.questionDepth;
+  return QUESTION_DEPTHS.has(value as QuestionDepth) ? (value as QuestionDepth) : undefined;
 }
 
 /** Reads a valid pet intent or chooses an action-appropriate default. */

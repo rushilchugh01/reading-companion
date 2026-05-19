@@ -17,9 +17,11 @@ describe("model prompt companion packs", () => {
     const messages = await buildAnswerGradePrompt(answerGradeInput("builtin-corgi"));
     const systemPrompt = messages[0]?.content ?? "";
 
-    expect(systemPrompt).toContain("Companion pack: Corgi.");
     expect(systemPrompt).toContain("corgi-like presence");
-    expect(systemPrompt).toContain("Companion grading style prompt: Grade with friendly directness.");
+    expect(systemPrompt).toContain("Sound sarcastic, brutal, fair, and brief.");
+    expect(systemPrompt).toContain("Grade with brutal fairness and dry humor.");
+    expect(systemPrompt).toContain("Call the grade_answer tool.");
+    expect(systemPrompt).not.toContain("return JSON");
   });
 
   it("uses the selected pack persona for intervention prompts", async () => {
@@ -32,10 +34,10 @@ describe("model prompt companion packs", () => {
     );
     const systemPrompt = messages[0]?.content ?? "";
 
-    expect(systemPrompt).toContain("Companion pack: Intervention Owl.");
     expect(systemPrompt).toContain("You are Intervention Owl, a selected companion.");
-    expect(systemPrompt).toContain("Companion interruption style prompt: Interrupt in the selected pack voice.");
-    expect(systemPrompt).not.toContain("Companion grading style prompt");
+    expect(systemPrompt).toContain("Interrupt in the selected pack voice.");
+    expect(systemPrompt).toContain("calling exactly one available intervention tool");
+    expect(systemPrompt).not.toContain("Grade in the selected pack voice.");
     fetchMock.mockRestore();
   });
 
@@ -46,14 +48,93 @@ describe("model prompt companion packs", () => {
     const grading = await buildAnswerGradePrompt(answerGradeInput("prompt-owl-grade-chat"), registry);
     const chat = await buildChatPrompt(chatInput("prompt-owl-grade-chat"), registry);
 
-    expect(grading[0]?.content).toContain("Companion grading style prompt: Grade in the selected pack voice.");
-    expect(grading[0]?.content).not.toContain("Companion interruption style prompt");
-    expect(chat[0]?.content).toContain("Companion pack: Prompt Owl.");
-    expect(chat[0]?.content).not.toContain("Companion grading style prompt");
-    expect(chat[0]?.content).not.toContain("Companion interruption style prompt");
+    expect(grading[0]?.content).toContain("Grade in the selected pack voice.");
+    expect(grading[0]?.content).not.toContain("Interrupt in the selected pack voice.");
+    expect(chat[0]?.content).toContain("You are Prompt Owl, a selected companion.");
+    expect(chat[0]?.content).not.toContain("Grade in the selected pack voice.");
+    expect(chat[0]?.content).not.toContain("Interrupt in the selected pack voice.");
     fetchMock.mockRestore();
   });
+
 });
+
+describe("model prompt question strategies", () => {
+  it("includes selected strategy id and ranked instructions in intervention prompts", async () => {
+    const input = {
+      ...interventionInput("builtin-corgi"),
+      questionGenerationStrategyId: "candidate_ranked_v1" as const
+    };
+    const messages = await buildInterventionPrompt(input);
+    const userPayload = JSON.parse(messages[1]?.content ?? "{}") as Record<string, unknown>;
+
+    expect(messages[0]?.content).toContain("internally generate 3-5 candidate questions");
+    expect(messages[0]?.content).toContain("calling exactly one available intervention tool");
+    expect(userPayload.strategyId).toBe("candidate_ranked_v1");
+    expect(userPayload.schema).toBeUndefined();
+    expect(userPayload.strategy).toMatchObject({ id: "candidate_ranked_v1" });
+    expect(userPayload.depthTaxonomy).toEqual(expect.arrayContaining(["hidden_assumption", "transfer"]));
+  });
+
+});
+
+describe("model prompt passage context", () => {
+  it("keeps passage truncation bounded while preserving persona guidance", async () => {
+    const input = {
+      ...interventionInput("builtin-corgi"),
+      currentPassage: {
+        chunkId: "chunk-1",
+        text: "A".repeat(5_000)
+      },
+      surroundingPassages: {
+        previous: [{ chunkId: "chunk-0", text: "B".repeat(3_000) }],
+        next: [{ chunkId: "chunk-2", text: "C".repeat(3_000) }],
+        recent: [{ chunkId: "chunk-3", text: "D".repeat(3_000) }]
+      }
+    };
+    const messages = await buildInterventionPrompt(input);
+    const userPayload = interventionUserPayload(messages);
+    const surrounding = userPayload.surroundingPassages;
+
+    expect(messages[0]?.content).toContain("corgi-like presence");
+    expect(userPayload.currentPassage?.text?.length).toBeLessThanOrEqual(4_003);
+    expect(surrounding.previous[0]?.text.length).toBeLessThanOrEqual(1_803);
+    expect(surrounding.next[0]?.text.length).toBeLessThanOrEqual(903);
+    expect(surrounding.recent[0]?.text.length).toBeLessThanOrEqual(1_203);
+  });
+
+  it("builds sketch_then_rank_v1 prompts with shared context", async () => {
+    const input = {
+      ...interventionInput("builtin-corgi"),
+      questionGenerationStrategyId: "sketch_then_rank_v1" as const,
+      surroundingPassages: {
+        previous: [{ chunkId: "chunk-0", text: "The setup defines the retry budget." }],
+        next: [],
+        recent: []
+      }
+    };
+    const messages = await buildInterventionPrompt(input);
+    const userPayload = JSON.parse(messages[1]?.content ?? "{}") as Record<string, unknown>;
+
+    expect(messages[0]?.content).toContain("Silently sketch the local argument");
+    expect(userPayload.strategyId).toBe("sketch_then_rank_v1");
+    expect(userPayload.surroundingPassages).toMatchObject({
+      previous: [{ chunkId: "chunk-0" }]
+    });
+  });
+});
+
+type InterventionUserPayload = {
+  currentPassage?: { text?: string };
+  surroundingPassages: {
+    previous: Array<{ chunkId?: string; text: string }>;
+    next: Array<{ chunkId?: string; text: string }>;
+    recent: Array<{ chunkId?: string; text: string }>;
+  };
+};
+
+function interventionUserPayload(messages: Array<{ content: string }>): InterventionUserPayload {
+  return JSON.parse(messages[1]?.content ?? "{}") as InterventionUserPayload;
+}
 
 function answerGradeInput(companionPackId: string): AnswerGradeInput {
   return {
@@ -82,6 +163,7 @@ function interventionInput(companionPackId: string): InterventionComposeInput {
     readerState: {},
     policy: { allowedActions: ["ask_question"], policyId: "ambient_active_reading_v1" },
     companionStyle: { companionPackId, personaId: "legacy-persona" },
+    questionGenerationStrategyId: "single_shot_v1",
     history: [],
     expiresAt: 2
   };

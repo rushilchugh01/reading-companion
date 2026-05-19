@@ -147,7 +147,7 @@ Provider settings live in `CompanionSettings.provider`:
 - `maxTokens`
 - `temperature`
 
-Default provider is the local OpenAI-compatible proxy at `http://127.0.0.1:8318/v1` with `gemini-3-flash-preview`.
+Default provider is the local OpenAI-compatible proxy at `http://127.0.0.1:8318/v1` with `gemini-3.1-pro-preview`.
 
 ## Tests
 

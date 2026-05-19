@@ -2,8 +2,8 @@ import { createDefaultSettings } from "@/shared/defaults";
 import type { AnswerGradeInput, ChatSendInput, InterventionComposeInput } from "@/shared/intervention-types";
 import type { CompanionPackManifest } from "@/shared/companion-pack-schema";
 import { ModelClient } from "@/background/model-client";
-import { companionTools } from "@/background/companion-tools";
-import { createPiModel, enforceJsonPayload, type PiModelResult, type PiRequest } from "@/background/pi-model-provider";
+import { gradingTools, interventionTools } from "@/background/companion-tools";
+import { createPiModel, type PiModelResult, type PiRequest } from "@/background/pi-model-provider";
 
 const passageText = "Photosynthesis converts light energy into chemical energy for plants.";
 const personaId = "brutal-tutor-dog";
@@ -52,6 +52,7 @@ function interventionInput(): InterventionComposeInput {
       allowedActions: ["ask_question", "offer_prediction", "offer_observation", "offer_help", "stay_quiet"]
     },
     companionStyle: { companionPackId: "builtin-corgi", personaId },
+    questionGenerationStrategyId: "single_shot_v1",
     history: [],
     expiresAt: 1_700_000_060_000
   };
@@ -111,10 +112,10 @@ describe("ModelClient", () => {
     ]);
 
     expect(request.url).toBe("http://127.0.0.1:8318/v1/chat/completions");
-    expect(request.body.model).toBe("gemini-3-flash-preview");
+    expect(request.body.model).toBe("gemini-3.1-pro-preview");
     expect(request.body.max_tokens).toBe(500);
     expect(request.body.tools?.map((tool) => tool.function.name)).toContain("ask_question");
-    expect(request.body.tools?.map((tool) => tool.function.name)).toContain("grade_answer");
+    expect(request.body.tools?.map((tool) => tool.function.name)).not.toContain("grade_answer");
     expect(request.init.headers).toMatchObject({
       "content-type": "application/json",
       authorization: "Bearer "
@@ -124,31 +125,29 @@ describe("ModelClient", () => {
   it("builds PI model config and tool payloads", () => {
     const settings = createDefaultSettings();
     const model = createPiModel(settings);
-    const payload = enforceJsonPayload({ model: "x", tools: [] });
 
     expect(model.api).toBe("openai-completions");
     expect(model.provider).toBe("openai-compatible");
-    expect(companionTools().map((tool) => tool.name)).toEqual([
+    expect(interventionTools().map((tool) => tool.name)).toEqual([
       "ask_question",
       "offer_prediction",
       "offer_observation",
       "offer_help",
-      "stay_quiet",
-      "grade_answer",
+      "stay_quiet"
     ]);
-    expect(payload).toMatchObject({ response_format: { type: "json_object" } });
+    expect(gradingTools().map((tool) => tool.name)).toEqual(["grade_answer"]);
   });
 
   it("classifies the proxy as OpenAI-compatible with configurable reasoning", () => {
     const settings = createDefaultSettings();
-    settings.provider.model = "gemini-3-flash-preview";
+    settings.provider.model = "gemini-3.1-pro-preview";
     settings.provider.reasoningLevel = "high";
 
     const model = createPiModel(settings);
 
     expect(model.api).toBe("openai-completions");
     expect(model.provider).toBe("openai-compatible");
-    expect(model.id).toBe("gemini-3-flash-preview");
+    expect(model.id).toBe("gemini-3.1-pro-preview");
   });
 
   it("builds a native PI model for Anthropic settings", () => {
@@ -189,6 +188,7 @@ describe("ModelClient intervention composition", () => {
       petIntent: "sharp_notice",
       requestId: "intervention-1"
     });
+    expect(piRunner.mock.calls[0]?.[0]).toMatchObject({ tools: "intervention" });
   });
 
   it("rejects action payloads that miss required fields", async () => {
@@ -209,6 +209,67 @@ describe("ModelClient intervention composition", () => {
       .rejects.toThrow("Provider request failed: ask_question requires expectedAnswer.");
   });
 
+});
+
+describe("ModelClient ranked question strategy validation", () => {
+  it("accepts ranked strategy question tool output with metadata", async () => {
+    const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
+      text: "",
+      toolCalls: [{
+        name: "ask_question",
+        arguments: {
+          userFacingText: "Why does the conversion matter for later plant growth?",
+          expectedAnswer: "Stored chemical energy can later support plant growth.",
+          questionStrategyId: "candidate_ranked_v1",
+          questionDepth: "implication",
+          targetIdea: "stored energy supports growth",
+          reasoningNeeded: "Infer a downstream consequence of energy storage.",
+          petIntent: "curious",
+          reasonForApp: "The selected question tests implication rather than recall.",
+          confidence: 0.82
+        }
+      }]
+    }));
+    const input = {
+      ...interventionInput(),
+      questionGenerationStrategyId: "candidate_ranked_v1" as const
+    };
+
+    await expect(createClient(piRunner).composeIntervention(input, createDefaultSettings()))
+      .resolves.toMatchObject({
+        action: "ask_question",
+        questionStrategyId: "candidate_ranked_v1",
+        questionDepth: "implication",
+        targetIdea: "stored energy supports growth"
+      });
+  });
+
+  it("rejects invalid ranked strategy question output with provider error", async () => {
+    const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
+      text: "",
+      toolCalls: [{
+        name: "ask_question",
+        arguments: {
+          userFacingText: "What is photosynthesis?",
+          expectedAnswer: "Photosynthesis converts light energy into chemical energy.",
+          petIntent: "curious",
+          reasonForApp: "Question approved.",
+          confidence: 0.7
+        }
+      }]
+    }));
+    const input = {
+      ...interventionInput(),
+      questionGenerationStrategyId: "candidate_ranked_v1" as const
+    };
+
+    await expect(createClient(piRunner).composeIntervention(input, createDefaultSettings()))
+      .rejects.toThrow("Provider request failed: candidate_ranked_v1 requires questionDepth.");
+  });
+
+});
+
+describe("ModelClient chat path", () => {
   it("keeps chat_send on the natural prose path", async () => {
     const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
       text: "It means the plant turns light into stored chemical energy.",
@@ -222,7 +283,6 @@ describe("ModelClient intervention composition", () => {
       tools: "none"
     });
   });
-
 });
 
 describe("ModelClient companion pack selection", () => {
@@ -254,7 +314,6 @@ describe("ModelClient companion pack selection", () => {
       companionStyle: { companionPackId: "client-lynx", personaId }
     }, settings);
 
-    expect(piRunner.mock.calls[0]?.[0].systemPrompt).toContain("Companion pack: Client Lynx.");
     expect(piRunner.mock.calls[0]?.[0].systemPrompt).toContain("You are Client Lynx.");
     expect(fetchMock).toHaveBeenCalledWith("https://packs.example/client-lynx/companion-pack.json");
     fetchMock.mockRestore();
@@ -262,16 +321,27 @@ describe("ModelClient companion pack selection", () => {
 });
 
 describe("ModelClient invalid provider output", () => {
-  it("wraps invalid JSON text in the provider error contract", async () => {
+  it("wraps missing intervention tool calls in the provider error contract", async () => {
     const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
-      text: "not-json",
+      text: "plain text",
       toolCalls: []
     }));
     const settings = createDefaultSettings();
     settings.provider.apiKey = "secret";
 
     await expect(createClient(piRunner).composeIntervention(interventionInput(), settings))
-      .rejects.toThrow("Provider request failed:");
+      .rejects.toThrow("Provider request failed: Provider did not return a required intervention tool call.");
+  });
+
+  it("wraps wrong-route intervention tool calls in the provider error contract", async () => {
+    const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
+      text: "",
+      toolCalls: [{ name: "grade_answer", arguments: { label: "correct", feedback: "Fine.", shouldRetry: false } }]
+    }));
+    const settings = createDefaultSettings();
+
+    await expect(createClient(piRunner).composeIntervention(interventionInput(), settings))
+      .rejects.toThrow("Provider request failed: Provider returned a non-intervention tool call.");
   });
 });
 
@@ -310,6 +380,7 @@ describe("ModelClient grading", () => {
     expect(result.label).toBe("missed_key_point");
     expect(result.feedback).toBe("You missed the energy conversion.");
     expect(result.missedPoint).toBe("Light energy becomes chemical energy.");
+    expect(piRunner.mock.calls[0]?.[0]).toMatchObject({ tools: "grading" });
   });
 
   it("throws a visible provider error when the provider returns an incomplete grade", async () => {
@@ -322,6 +393,31 @@ describe("ModelClient grading", () => {
 
     await expect(createClient(piRunner).gradeAnswer(gradePayload("plants"), settings)).rejects.toThrow(
       "Provider request failed: Provider returned an incomplete grading payload."
+    );
+  });
+
+});
+
+describe("ModelClient grading route tools", () => {
+  it("throws a visible provider error when grading returns no tool call", async () => {
+    const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
+      text: "Looks correct.",
+      toolCalls: []
+    }));
+
+    await expect(createClient(piRunner).gradeAnswer(gradePayload("plants"), createDefaultSettings())).rejects.toThrow(
+      "Provider request failed: Provider did not return a required grading tool call."
+    );
+  });
+
+  it("throws a visible provider error when grading returns an intervention tool", async () => {
+    const piRunner = vi.fn<(request: PiRequest) => Promise<PiModelResult>>(() => Promise.resolve({
+      text: "",
+      toolCalls: [{ name: "stay_quiet", arguments: { petIntent: "quiet", reasonForApp: "Wrong route.", confidence: 0.1 } }]
+    }));
+
+    await expect(createClient(piRunner).gradeAnswer(gradePayload("plants"), createDefaultSettings())).rejects.toThrow(
+      "Provider request failed: Provider returned a non-grading tool call."
     );
   });
 

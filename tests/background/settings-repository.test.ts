@@ -40,6 +40,7 @@ describe("SettingsRepository", () => {
 
     expect(settings.showPet).toBe(false);
     expect(settings.interventionPolicy.policyId).toBe("ambient_active_reading_v1");
+    expect(settings.questionGenerationStrategyId).toBe("candidate_ranked_v1");
     expect(settings.interventionPolicy.overrides.minimumMeaningfulness).toBe(0.2);
     expect(settings.placement.x).toBe(100);
     expect(settings.placement.panelWidth).toBe(createDefaultSettings().placement.panelWidth);
@@ -62,6 +63,7 @@ describe("SettingsRepository", () => {
   it("keeps default provider model and reasoning non-empty", () => {
     const settings = createDefaultSettings();
 
+    expect(settings.questionGenerationStrategyId).toBe("candidate_ranked_v1");
     expect(settings.provider.model).toBeTruthy();
     expect(settings.provider.reasoningLevel).toBeTruthy();
   });

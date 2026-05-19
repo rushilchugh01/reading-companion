@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef } from "react";
 import {
   CompanionBubble,
   ToolActionButton,
@@ -92,13 +93,31 @@ function QuestionQuickChoices(props: { choices?: QuestionResponsePanelData["quic
 }
 
 function ConversationTranscript(props: { messages: CompanionConversationMessage[] }) {
+  const transcriptRef = useRef<HTMLDivElement>(null);
+  const messageKey = useMemo(() => conversationScrollKey(props.messages), [props.messages]);
+  useEffect(() => {
+    const transcript = transcriptRef.current;
+    if (!transcript) return;
+    transcript.scrollTop = transcript.scrollHeight;
+  }, [messageKey]);
+
   return (
-    <div className="rc-question-response-panel__conversation" role="log" aria-live="polite" aria-label="Question conversation">
+    <div
+      ref={transcriptRef}
+      className="rc-question-response-panel__conversation"
+      role="log"
+      aria-live="polite"
+      aria-label="Question conversation"
+    >
       {props.messages.map((message) => (
         <ConversationMessage key={message.id} message={message} />
       ))}
     </div>
   );
+}
+
+function conversationScrollKey(messages: CompanionConversationMessage[]): string {
+  return messages.map((message) => `${message.id}:${message.status ?? "sent"}`).join("|");
 }
 
 function ConversationMessage(props: { message: CompanionConversationMessage }) {

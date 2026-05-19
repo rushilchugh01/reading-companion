@@ -1,5 +1,5 @@
 import type { ReadingChunk, ReadingSignals } from "./reading-types";
-import type { CompanionSettings, CognitiveMove, InterventionPolicyId } from "./settings-types";
+import type { CompanionSettings, CognitiveMove, InterventionPolicyId, QuestionGenerationStrategyId } from "./settings-types";
 import type { GradeLabel } from "./session-types";
 
 export type InterventionAction =
@@ -29,6 +29,16 @@ export type PetIntent =
   | "pleased"
   | "explaining";
 
+export type QuestionDepth =
+  | "recall"
+  | "explain_why"
+  | "hidden_assumption"
+  | "evidence_check"
+  | "connection"
+  | "implication"
+  | "transfer"
+  | "self_explanation";
+
 export type InterventionComposeAction = InterventionAction;
 export type InterventionObservationType = ObservationType;
 
@@ -46,6 +56,12 @@ export type InterventionPassageContext = {
   text: string;
   preview?: string;
   order?: number;
+};
+
+export type InterventionSurroundingPassages = {
+  previous: InterventionPassageContext[];
+  next: InterventionPassageContext[];
+  recent: InterventionPassageContext[];
 };
 
 export type InterventionReaderState = {
@@ -90,9 +106,11 @@ export type InterventionComposeInput = {
   chunkId: string;
   page: InterventionPageContext;
   currentPassage: InterventionPassageContext;
+  surroundingPassages?: InterventionSurroundingPassages;
   readerState: InterventionReaderState;
   policy: InterventionPolicyContext;
   companionStyle: CompanionStyleContext;
+  questionGenerationStrategyId: QuestionGenerationStrategyId;
   history: InterventionHistoryItem[];
   expiresAt: number;
 };
@@ -103,6 +121,10 @@ export type InterventionComposeResult = {
   action: InterventionAction;
   userFacingText?: string;
   expectedAnswer?: string;
+  questionStrategyId?: QuestionGenerationStrategyId;
+  questionDepth?: QuestionDepth;
+  targetIdea?: string;
+  reasoningNeeded?: string;
   observationType?: ObservationType;
   followupOptions?: string[];
   petIntent: PetIntent;
@@ -118,6 +140,10 @@ export type AnswerGradeInput = {
   chunkId: string;
   question: string;
   expectedAnswer: string;
+  questionStrategyId?: QuestionGenerationStrategyId;
+  questionDepth?: QuestionDepth;
+  targetIdea?: string;
+  reasoningNeeded?: string;
   userAnswer: string;
   passage?: InterventionPassageContext;
   companionPackId: string;

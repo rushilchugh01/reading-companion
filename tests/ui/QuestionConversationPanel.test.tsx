@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { CompanionPetApp } from "@/ui";
 import type { QuestionSession } from "@/shared/session-types";
 import type { CompanionConversationMessage } from "@/ui";
@@ -14,7 +14,7 @@ const questionSession: QuestionSession = {
 };
 
 describe("Question conversation panel", () => {
-  it("renders PI-shaped user and assistant conversation messages", () => {
+  it("renders PI-shaped user and assistant conversation messages", async () => {
     render(
       <CompanionPetApp
         questionSession={questionSession}
@@ -26,14 +26,12 @@ describe("Question conversation panel", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Open reading companion" }));
-
-    expect(screen.getByRole("log", { name: "Question conversation" })).toBeInTheDocument();
+    expect(await screen.findByRole("log", { name: "Question conversation" })).toBeInTheDocument();
     expect(screen.getByText("Because the premise changed.")).toBeInTheDocument();
     expect(screen.getByText("Right, that change is the hinge.")).toBeInTheDocument();
   });
 
-  it("renders supported PI tool-call content in the conversation", () => {
+  it("renders supported PI tool-call content in the conversation", async () => {
     render(
       <CompanionPetApp
         questionSession={questionSession}
@@ -48,12 +46,10 @@ describe("Question conversation panel", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Open reading companion" }));
-
-    expect(screen.getByText("Which detail changed the premise?")).toBeInTheDocument();
+    expect(await screen.findByText("Which detail changed the premise?")).toBeInTheDocument();
   });
 
-  it("keeps a completed transcript visible with follow-up chat input", () => {
+  it("keeps a completed transcript visible with follow-up chat input", async () => {
     const onAnswerSubmit = vi.fn();
     render(
       <CompanionPetApp
@@ -66,15 +62,43 @@ describe("Question conversation panel", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Open reading companion" }));
-
-    expect(screen.getByRole("log", { name: "Question conversation" })).toBeInTheDocument();
+    expect(await screen.findByRole("log", { name: "Question conversation" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Type a quick answer...")).not.toBeInTheDocument();
     const input = screen.getByLabelText("Ask a follow-up...");
     fireEvent.change(input, { target: { value: "Can you say that another way?" } });
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(onAnswerSubmit).toHaveBeenCalledWith("Can you say that another way?");
+  });
+
+});
+
+describe("Question conversation transcript scrolling", () => {
+  it("scrolls the transcript to the newest message", async () => {
+    const { rerender } = render(
+      <CompanionPetApp
+        questionSession={questionSession}
+        conversationMessages={[
+          assistantMessage("question-1:question", "What caused this to happen?")
+        ]}
+      />
+    );
+    const transcript = await screen.findByRole("log", { name: "Question conversation" });
+    Object.defineProperty(transcript, "scrollHeight", { configurable: true, value: 640 });
+    transcript.scrollTop = 0;
+
+    rerender(
+      <CompanionPetApp
+        questionSession={questionSession}
+        conversationMessages={[
+          assistantMessage("question-1:question", "What caused this to happen?"),
+          userMessage("question-1:answer", "Because the premise changed."),
+          assistantMessage("question-1:feedback", "Right, that change is the hinge.")
+        ]}
+      />
+    );
+
+    await waitFor(() => expect(transcript.scrollTop).toBe(640));
   });
 });
 
