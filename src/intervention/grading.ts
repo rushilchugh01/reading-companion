@@ -17,7 +17,7 @@ export function evaluateAnswer(input: AnswerEvaluationInput): AnswerEvaluation {
     return {
       action: "hint",
       feedback: input.grade.feedback,
-      hint: input.grade.hint ?? input.session.expectedPoint,
+      hint: input.grade.hint ?? input.session.expectedAnswer,
       nextSession: incrementAttempt(input.session)
     };
   }
@@ -34,7 +34,7 @@ export function evaluateAnswer(input: AnswerEvaluationInput): AnswerEvaluation {
   return {
     action: "explanation",
     feedback: input.grade.feedback,
-    explanation: input.grade.missedPoint ?? input.session.expectedPoint,
+    explanation: input.grade.missedPoint ?? input.session.expectedAnswer,
     weakConcept: createWeakConcept(input)
   };
 }

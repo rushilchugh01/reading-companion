@@ -12,7 +12,7 @@ export function createWeakConcept(input: {
   personaId: string;
   now: number;
 }): WeakConcept {
-  const missedPoint = input.grade.missedPoint ?? input.session.expectedPoint;
+  const missedPoint = input.grade.missedPoint ?? input.session.expectedAnswer;
   return {
     id: `weak:${input.session.id}:${input.now}`,
     concept: createConceptLabel(input.chunk, missedPoint),

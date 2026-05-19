@@ -1,6 +1,6 @@
 import type { Browser } from "wxt/browser";
 import { browser } from "wxt/browser";
-import type { AnswerGradeInput, ChatSendInput, InterventionComposeInput, InterventionComposeResult } from "../shared/intervention-types";
+import type { ChatSendInput, InterventionComposeInput, InterventionComposeResult } from "../shared/intervention-types";
 import type { RuntimeMessage } from "../shared/messages";
 import type { ModelJobDraft, ModelJobKind, ModelQueueDebugSnapshot } from "../shared/model-job-types";
 import type { CurrentRuntimeSnapshot } from "../shared/runtime-types";
@@ -33,8 +33,7 @@ type QueuedModelRequest = {
   reject: (error: Error) => void;
 };
 
-type QuestionGeneratePayload = Extract<RuntimeMessage, { type: "question:generate" }>["payload"];
-type AnswerGradePayload = AnswerGradeInput;
+type AnswerGradePayload = Extract<RuntimeMessage, { type: "answer:grade" }>["payload"];
 
 const backgroundLogger = createCompanionLogger("background");
 
@@ -132,8 +131,6 @@ export class RuntimeMessageRouter {
     switch (message.type) {
       case "intervention:compose":
         return this.loggedOk(message.type, startedAt, await this.enqueueInterventionCompose(message.payload));
-      case "question:generate":
-        return this.loggedOk(message.type, startedAt, (await this.enqueueModelJob(this.legacyQuestionJob(message.payload))).result);
       case "answer:grade":
         return this.loggedOk(message.type, startedAt, (await this.enqueueModelJob(this.answerGradeJob(message.payload))).result);
       case "chat:send":
@@ -253,25 +250,13 @@ export class RuntimeMessageRouter {
     };
   }
 
-  /** Builds a queue draft for legacy question generation. */
-  private legacyQuestionJob(payload: QuestionGeneratePayload): ModelJobDraft<QuestionGeneratePayload> {
-    const contentHash = hashText(payload.chunkText);
-    return {
-      kind: "intervention_compose",
-      pageId: payload.heading || "legacy-question",
-      contentHash,
-      chunkId: payload.opportunity?.targetChunkId ?? contentHash,
-      input: payload
-    };
-  }
-
   /** Builds a queue draft for answer grading. */
   private answerGradeJob(payload: AnswerGradePayload): ModelJobDraft<AnswerGradePayload> {
     return {
       kind: "answer_grade",
-      questionSessionId: payload.questionId,
+      questionSessionId: payload.sessionId,
       attemptNumber: payload.attemptNumber,
-      chunkId: payload.passage?.chunkId,
+      chunkId: payload.chunkId,
       input: payload
     };
   }
@@ -288,14 +273,10 @@ export class RuntimeMessageRouter {
     };
   }
 
-  /** Runs either normalized intervention compose or legacy question generation. */
+  /** Runs normalized intervention composition behind the queue boundary. */
   private async runInterventionComposeJob(input: unknown): Promise<unknown> {
     const settings = await this.services.settings.get();
-    if (isInterventionComposeInput(input)) {
-      return this.services.model.composeIntervention(input, settings);
-    }
-
-    return this.services.model.generateQuestion(input as QuestionGeneratePayload, settings);
+    return this.services.model.composeIntervention(input as InterventionComposeInput, settings);
   }
 
   /** Runs answer grading behind the queue boundary. */
@@ -327,16 +308,6 @@ function modelJobError(event: ModelJobSettleEvent): Error {
   return new Error(`Model job ${event.status}: ${event.job.kind}`);
 }
 
-/** Checks whether queued input uses the normalized intervention contract. */
-function isInterventionComposeInput(input: unknown): input is InterventionComposeInput {
-  return isRecord(input)
-    && typeof input.requestId === "string"
-    && typeof input.pageId === "string"
-    && typeof input.contentHash === "string"
-    && typeof input.chunkId === "string"
-    && isRecord(input.currentPassage);
-}
-
 /** Returns a stay-quiet result when validation rejects a stale intervention. */
 function staleInterventionResult(
   payload: InterventionComposeInput,
@@ -350,18 +321,4 @@ function staleInterventionResult(
     confidence: 0,
     expiresAt: payload.expiresAt
   };
-}
-
-/** Checks whether an unknown value is a plain object record. */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/** Hashes legacy chunk text for queue identity. */
-function hashText(text: string): string {
-  let hash = 0;
-  for (const character of text) {
-    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
-  }
-  return `hash-${hash.toString(16)}`;
 }

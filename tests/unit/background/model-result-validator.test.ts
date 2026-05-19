@@ -113,9 +113,10 @@ describe("validateAnswerGradeResult", () => {
     questionSessionId: "session-1",
     attemptNumber: 2,
     input: {
+      userAnswer: "Light energy",
+      sessionId: "session-1",
       attemptNumber: 2,
-      questionId: "session-1",
-      userAnswer: "Light energy"
+      chunkId: "chunk-1"
     }
   });
 

@@ -3,7 +3,6 @@ import type { AnswerGradeInput, ChatSendInput, ChatSendResult, InterventionCompo
 import type { ModelQueueDebugSnapshot } from "./model-job-types";
 import type { CurrentRuntimeSnapshot } from "./runtime-types";
 import type { CompanionSettings } from "./settings-types";
-import type { CognitiveMove, InterventionPolicyId } from "./settings-types";
 import type { WeakConcept } from "./session-types";
 
 /** Runtime messages exchanged between content UI and background worker. */
@@ -14,7 +13,6 @@ export type RuntimeMessage =
   | { type: "runtime:snapshot"; payload: CurrentRuntimeSnapshot }
   | { type: "runtime:debugModelJobs" }
   | InterventionComposeRuntimeMessage
-  | { type: "question:generate"; payload: QuestionPromptPayload }
   | { type: "answer:grade"; payload: AnswerGradeInput }
   | ChatSendRuntimeMessage
   | { type: "modelJob:cancelForPage"; payload: { pageId: string } }
@@ -26,22 +24,3 @@ export type ChatSendRuntimeMessage = { type: "chat:send"; payload: ChatSendInput
 export type InterventionComposeMessageResult = InterventionComposeResult;
 export type ChatSendMessageResult = ChatSendResult;
 export type RuntimeDebugModelJobsResult = ModelQueueDebugSnapshot;
-export type LegacyQuestionPromptPayload = QuestionPromptPayload;
-
-/** Payload used for read-gated question generation. */
-export type QuestionPromptPayload = {
-  chunkText: string;
-  heading: string;
-  personaId: string;
-  readGatingMode: CompanionSettings["readGatingMode"];
-  opportunity?: QuestionPromptOpportunity;
-};
-
-/** Compact policy opportunity sent to the model prompt. */
-export type QuestionPromptOpportunity = {
-  targetChunkId: string;
-  reason: string;
-  confidence: number;
-  suggestedMoves: CognitiveMove[];
-  policyId: InterventionPolicyId;
-};

@@ -187,7 +187,7 @@ export function questionSessionFromIntervention(
     chunkId: chunk.id,
     question: result.userFacingText,
     style: result.action === "offer_prediction" ? "prediction" : questionStyleFor(settings.readGatingMode),
-    expectedPoint: result.expectedAnswer,
+    expectedAnswer: result.expectedAnswer,
     attemptCount: 0,
     createdAt: now
   };

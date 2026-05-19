@@ -5,7 +5,7 @@ import type { QuestionSession, QuestionStyle } from "../shared/session-types";
 export function startQuestionSession(input: {
   chunk: ReadingChunk;
   question: string;
-  expectedPoint: string;
+  expectedAnswer: string;
   style: QuestionStyle;
   now: number;
 }): QuestionSession {
@@ -14,7 +14,7 @@ export function startQuestionSession(input: {
     chunkId: input.chunk.id,
     question: input.question,
     style: input.style,
-    expectedPoint: input.expectedPoint,
+    expectedAnswer: input.expectedAnswer,
     attemptCount: 0,
     createdAt: input.now
   };

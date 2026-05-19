@@ -1,5 +1,5 @@
 import type { InterventionComposeInput } from "@/shared/intervention-types";
-import { normalizeInterventionRecord } from "@/background/model/result-normalizer";
+import { normalizeInterventionRecord, recordFromText } from "@/background/model/result-normalizer";
 
 const baseInput: Pick<InterventionComposeInput, "requestId" | "expiresAt"> = {
   requestId: "contract-1",
@@ -53,5 +53,21 @@ describe("intervention result contracts", () => {
       reasonForApp: "No useful intervention.",
       confidence: 0.4
     }, baseInput)).toThrow("stay_quiet must not include userFacingText.");
+  });
+});
+
+describe("provider JSON text normalization", () => {
+  it("parses markdown-fenced JSON objects", () => {
+    expect(recordFromText([
+      "```json",
+      "{",
+      "  \"label\": \"correct\",",
+      "  \"feedback\": \"That captures the key point.\"",
+      "}",
+      "```"
+    ].join("\n"))).toEqual({
+      label: "correct",
+      feedback: "That captures the key point."
+    });
   });
 });

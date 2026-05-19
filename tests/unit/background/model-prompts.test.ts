@@ -58,8 +58,9 @@ describe("model prompt companion packs", () => {
 function answerGradeInput(companionPackId: string): AnswerGradeInput {
   return {
     requestId: "grade-1",
-    questionId: "question-1",
+    sessionId: "question-1",
     attemptNumber: 0,
+    chunkId: "chunk-1",
     question: "What changed?",
     expectedAnswer: "Light became stored energy.",
     userAnswer: "Light became energy.",

@@ -541,10 +541,11 @@ function createAnswerGradePayload(
   const session = state.session!;
   return {
     requestId: `grade-${Date.now()}-${session.id}`,
-    questionId: session.id,
+    sessionId: session.id,
     attemptNumber: session.attemptCount,
+    chunkId: session.chunkId,
     question: session.question,
-    expectedAnswer: session.expectedPoint,
+    expectedAnswer: session.expectedAnswer,
     userAnswer: answer,
     passage: {
       chunkId: chunk.id,

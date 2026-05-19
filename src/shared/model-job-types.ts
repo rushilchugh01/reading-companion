@@ -109,9 +109,10 @@ export type UserChatModelInput = {
 };
 
 export type AnswerGradeModelInput = {
-  attemptNumber?: number;
-  questionId?: string;
   userAnswer: string;
+  sessionId: string;
+  attemptNumber: number;
+  chunkId: string;
 };
 
 export type InterventionComposeModelInput = {

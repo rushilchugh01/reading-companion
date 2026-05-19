@@ -260,7 +260,7 @@ function makeSession(chunk = makeChunk()): QuestionSession {
   return startQuestionSession({
     chunk,
     question: "What matters?",
-    expectedPoint: "The mechanism matters.",
+    expectedAnswer: "The mechanism matters.",
     style: "recall",
     now: NOW
   });

@@ -1,6 +1,12 @@
 import type { CompanionSettings } from "./settings-types";
 import { createDefaultCompanionPackRegistry } from "./companion-pack-registry";
 
+declare const __DEFAULT_PROVIDER_API_KEY__: string | undefined;
+
+function defaultProviderApiKey(): string {
+  return typeof __DEFAULT_PROVIDER_API_KEY__ === "string" ? __DEFAULT_PROVIDER_API_KEY__ : "";
+}
+
 /** Default settings preserve local-first privacy and OpenAI-compatible proxy support. */
 export function createDefaultSettings(): CompanionSettings {
   return {
@@ -33,7 +39,7 @@ export function createDefaultSettings(): CompanionSettings {
     provider: {
       providerId: "custom",
       baseUrl: "http://127.0.0.1:8318/v1",
-      apiKey: "",
+      apiKey: defaultProviderApiKey(),
       model: "gemini-3-flash-preview",
       providerName: "OpenAI Compatible",
       reasoningLevel: "medium",

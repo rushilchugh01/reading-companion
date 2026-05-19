@@ -6,21 +6,10 @@ export type QuestionSession = {
   chunkId: string;
   question: string;
   style: QuestionStyle;
-  expectedPoint: string;
+  expectedAnswer: string;
   attemptCount: number;
   createdAt: number;
 };
-
-/** Result of model-driven intervention generation. */
-export type QuestionGenerationResult =
-  | { action: "ask_question"; session: QuestionSession }
-  | {
-    action: "stay_quiet";
-    reason: string;
-    nextBestMoment?: string;
-    targetChunkId?: string;
-    createdAt: number;
-  };
 
 /** Supported active-reading question styles. */
 export type QuestionStyle =

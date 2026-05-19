@@ -1,6 +1,6 @@
 import type { Tool } from "@earendil-works/pi-ai";
 import type { InterventionAction, ObservationType, PetIntent } from "../shared/intervention-types";
-import type { GradeLabel, QuestionStyle } from "../shared/session-types";
+import type { GradeLabel } from "../shared/session-types";
 
 /** Names of companion actions the model may request through PI tools. */
 export type CompanionToolName =
@@ -21,17 +21,6 @@ export type CompanionToolCall = {
 };
 
 type JsonSchema = Tool["parameters"];
-
-const QUESTION_STYLES: QuestionStyle[] = [
-  "recall",
-  "why_how",
-  "prediction",
-  "analogy",
-  "code_walkthrough",
-  "counterexample",
-  "compare_contrast",
-  "hidden_assumption"
-];
 
 const GRADE_LABELS: GradeLabel[] = [
   "correct",
@@ -109,52 +98,6 @@ export function companionTools(): Tool[] {
       missedPoint: stringSchema(),
       shouldRetry: booleanSchema()
     }, ["label", "feedback", "shouldRetry"])
-  ];
-}
-
-/** Legacy tool schemas kept for compatibility tests and older provider transcripts. */
-export function legacyQuestionTools(): Tool[] {
-  return [
-    companionTool("ask_question", "Ask one read-gated active-reading question.", {
-      question: stringSchema(),
-      expectedPoint: stringSchema(),
-      style: enumSchema(QUESTION_STYLES),
-      targetChunkId: stringSchema(),
-      urgency: enumSchema(["low", "medium", "high"])
-    }, ["question", "expectedPoint", "style", "targetChunkId"]),
-    companionTool("get_attention", "Suggest a light pet attention gesture before an allowed question.", {
-      reason: stringSchema(),
-      animation: enumSchema(["curious_tilt", "prompt_nudge", "thinking_grade"]),
-      copy: stringSchema(),
-      intensity: enumSchema([0, 1, 2])
-    }, ["reason", "animation", "copy", "intensity"]),
-    companionTool("offer_prediction", "Ask the reader to predict what comes next from seen context.", {
-      prompt: stringSchema(),
-      expectedDirection: stringSchema(),
-      targetChunkId: stringSchema()
-    }, ["prompt", "expectedDirection", "targetChunkId"]),
-    companionTool("save_weak_concept", "Request saving a weak concept after a weak answer.", {
-      concept: stringSchema(),
-      missedPoint: stringSchema(),
-      sourceChunkId: stringSchema()
-    }, ["concept", "missedPoint", "sourceChunkId"]),
-    companionTool("offer_hint", "Give one hint and request a retry.", {
-      hint: stringSchema(),
-      retryPrompt: stringSchema()
-    }, ["hint", "retryPrompt"]),
-    companionTool("grade_answer", "Grade a user's answer with medium-strict active-reading labels.", {
-      label: enumSchema(GRADE_LABELS),
-      feedback: stringSchema(),
-      missedPoint: stringSchema(),
-      shouldRetry: booleanSchema()
-    }, ["label", "feedback", "shouldRetry"]),
-    companionTool("stay_quiet", "Decline to intervene when silence is the best cognitive move.", {
-      reason: stringSchema(),
-      nextBestMoment: stringSchema()
-    }, ["reason"]),
-    companionTool("set_pet_state", "Suggest an expressive pet state for the current model action.", {
-      state: enumSchema(["curious", "thinking", "listening", "confused", "celebratory"])
-    }, ["state"])
   ];
 }
 

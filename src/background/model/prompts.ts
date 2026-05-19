@@ -63,6 +63,7 @@ export async function buildAnswerGradePrompt(
       content: JSON.stringify({
         task: "grade_answer",
         requestId: payload.requestId,
+        sessionId: payload.sessionId,
         strictness: payload.strictness,
         personaId: payload.personaId,
         question: payload.question,
