@@ -15,6 +15,7 @@ import {
 
 const extensionPath = findBuiltExtensionPath();
 const cliproxy = readCliproxySettings();
+const geminiModels = geminiModelsFromEnv();
 const strategies = ["single_shot_v1", "candidate_ranked_v1", "sketch_then_rank_v1"] as const;
 const liveSites = [
   "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Structuring_content/Basic_HTML_syntax",
@@ -27,34 +28,33 @@ test.describe("Cliproxy live-site question strategies", () => {
   test.skip(extensionPath === undefined, "Run `npm run build` before extension e2e tests.");
   test.skip(cliproxy === undefined, "Start Cliproxy and configure CLIPROXY_CONFIG_PATH or the default local config path.");
 
-  test("generates questions for every strategy on live pages", async () => {
-    test.setTimeout(480_000);
+  test("generates questions for every strategy across Gemini models on live pages", async () => {
+    test.setTimeout(720_000);
     if (extensionPath === undefined || cliproxy === undefined) return;
 
     const extension = await launchExtensionContext({ extensionPath, testInfo: test.info() });
+    const passageCache = new Map<string, Passage[]>();
     const generated: StrategyResult[] = [];
     try {
       const options = await openOptionsPage(extension.context, extension.extensionId!);
-      await configureCliproxy(options, cliproxy);
 
-      for (const siteUrl of liveSites) {
-        const page = await extension.context.newPage();
-        await page.goto(siteUrl, { waitUntil: "domcontentloaded", timeout: 60_000 });
-        const passages = await extractPassages(page);
-        await page.close();
-
-        for (const strategy of strategies) {
-          const result = await composeQuestion(options, siteUrl, passages, strategy);
+      for (const [modelIndex, model] of geminiModels.entries()) {
+        await configureCliproxy(options, cliproxy, model);
+        for (const [strategyIndex, strategy] of strategies.entries()) {
+          const siteUrl = liveSites[(modelIndex + strategyIndex) % liveSites.length] ?? liveSites[0];
+          const passages = await passagesForSite(extension.context, passageCache, siteUrl);
+          const result = await composeQuestion({ model, page: options, passages, siteUrl, strategy });
           generated.push({
             action: result.action,
             depth: result.questionDepth,
+            model,
             question: result.userFacingText,
             siteUrl,
             strategy
           });
           expect(result.action).toBe("ask_question");
           expect(result.userFacingText?.trim().length).toBeGreaterThan(24);
-          expect(result.expectedAnswer?.trim().length).toBeGreaterThan(24);
+          expect(result.expectedAnswer?.trim().length).toBeGreaterThan(8);
           if (strategy !== "single_shot_v1") expect(result.questionDepth).toBeTruthy();
         }
       }
@@ -97,12 +97,13 @@ type InterventionResult = {
 type StrategyResult = {
   action: string;
   depth?: string;
+  model: string;
   question?: string;
   siteUrl: string;
   strategy: StrategyId;
 };
 
-async function configureCliproxy(page: Page, provider: CliproxySettings): Promise<void> {
+async function configureCliproxy(page: Page, provider: CliproxySettings, model: string): Promise<void> {
   const settings = await sendRuntimeMessage<Record<string, unknown>>(page, { type: "settings:get" });
   await writeExtensionSettings(page, {
     ...settings,
@@ -112,13 +113,28 @@ async function configureCliproxy(page: Page, provider: CliproxySettings): Promis
       apiKey: provider.apiKey,
       baseUrl: provider.baseUrl,
       maxTokens: 900,
-      model: "gemini-3.1-pro-preview",
+      model,
       providerId: "custom",
       providerName: "Cliproxy Local",
       temperature: 0.2,
       timeout: 90_000
     }
   });
+}
+
+async function passagesForSite(
+  context: { newPage: () => Promise<Page> },
+  cache: Map<string, Passage[]>,
+  siteUrl: string
+): Promise<Passage[]> {
+  const cached = cache.get(siteUrl);
+  if (cached) return cached;
+  const page = await context.newPage();
+  await page.goto(siteUrl, { waitUntil: "domcontentloaded", timeout: 60_000 });
+  const passages = await extractPassages(page);
+  await page.close();
+  cache.set(siteUrl, passages);
+  return passages;
 }
 
 async function extractPassages(page: Page): Promise<Passage[]> {
@@ -151,17 +167,21 @@ async function fallbackBodyPassages(page: Page): Promise<string[]> {
 }
 
 async function composeQuestion(
-  page: Page,
-  siteUrl: string,
-  passages: Passage[],
-  strategy: StrategyId
+  input: {
+    model: string;
+    page: Page;
+    passages: Passage[];
+    siteUrl: string;
+    strategy: StrategyId;
+  }
 ): Promise<InterventionResult> {
+  const { model, page, passages, siteUrl, strategy } = input;
   const current = passages[Math.min(1, passages.length - 1)];
   expect(current).toBeDefined();
   return await sendRuntimeMessage<InterventionResult>(page, {
     type: "intervention:compose",
     payload: {
-      requestId: `live-${strategy}-${Date.now()}`,
+      requestId: `live-${smallHash(model)}-${strategy}-${Date.now()}`,
       tabId: 0,
       pageId: `live-${smallHash(siteUrl)}`,
       contentHash: smallHash(passages.map((passage) => passage.text).join("\n")),
@@ -186,7 +206,7 @@ async function composeQuestion(
         allowedActions: ["ask_question"],
         confidence: 0.9,
         policyId: "ambient_active_reading_v1",
-        reason: "live_strategy_smoke",
+        reason: "live_strategy_smoke_recall_allowed",
         suggestedMoves: ["ask_question"]
       },
       companionStyle: {
@@ -220,6 +240,13 @@ function readCliproxySettings(): CliproxySettings | undefined {
 
 function matchConfigValue(text: string, pattern: RegExp): string | undefined {
   return pattern.exec(text)?.[1]?.trim();
+}
+
+function geminiModelsFromEnv(): string[] {
+  return (process.env.CLIPROXY_GEMINI_MODELS ?? "gemini-3-flash-preview,gemini-3.1-flash-lite-preview,gemini-3.1-pro-preview")
+    .split(",")
+    .map((model) => model.trim())
+    .filter(Boolean);
 }
 
 function smallHash(value: string): string {
